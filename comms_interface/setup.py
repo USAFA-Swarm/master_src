@@ -23,7 +23,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'controller = comms_interface.controller:main',
+            'telemtry = comms_interface.telemtry:main',
+            'status = comms_interface.status:main',
         ],
     },
 )
