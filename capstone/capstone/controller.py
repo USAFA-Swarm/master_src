@@ -1,3 +1,4 @@
+import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import BatteryState, Imu
 from geometry_msgs.msg import PoseStamped, TwistStamped
@@ -87,3 +88,23 @@ class GroundStationController(Node):
         req = SetMode.Request()
         req.custom_mode = mode
         self.mode_client.call_async(req)
+
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    # Example: controlling 4 drones named smaug1–smaug4
+    drone_names = [f'smaug{i}' for i in range(1, 5)]
+    node = GroundStationController(drone_names)
+
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        node.get_logger().info("Shutting down Ground Station Controller.")
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
