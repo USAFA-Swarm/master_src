@@ -263,10 +263,21 @@ class Controller(Node):
 
 def main(args=None):
     """
-    Main entrt point of the node. Initializes and runs the Controller node.
+    Main entry point of the node. Initializes and runs the Controller node.
     """
     rclpy.init(args=args)   # Initialize ROS2
-    drone_names = [f'smaug{i}' for i in range(1, 5)]
+
+    # Ask user for drone names
+    print("Enter drone names (separated by spaces):")
+    user_input = input("> ").strip()
+    drone_names = user_input.split()
+
+    # Safety check
+    if not drone_names:
+        print("No drone names entered. Exiting.")
+        rclpy.shutdown()
+        return
+
     node = Controller(drone_names)  # Create Controller node instance
 
     try:
