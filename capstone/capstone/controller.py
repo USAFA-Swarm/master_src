@@ -650,16 +650,34 @@ class Controller(Node):
                             # Use both position and velocity control for smoother movement
                             self.send_position(drone, x, y, z)  # Send target position
 
-                            # Calculate desired velocity (proportional to distance)
-                            max_speed = 2.0  # m/s
-                            min_speed = 0.5  # m/s
-                            speed = min(max_speed, max(min_speed, dist * 0.5))  # Proportional to distance
+                            # More aggressive velocity control
+                            max_speed = 8.0  # m/s - Significantly increased
+                            min_speed = 2.0  # m/s - Higher minimum speed
+                            
+                            # Proportional control with distance zones
+                            if dist > 20.0:  # Far from target
+                                speed = max_speed
+                            elif dist > 5.0:  # Medium distance
+                                speed = max(min_speed * 2, dist * 0.5)  # Faster approach
+                            else:  # Close to target
+                                speed = max(min_speed, dist * 0.8)  # Gentler deceleration
                             
                             if dist > 0.1:  # Only send velocity if we're not too close
+                                # Calculate velocity components
                                 vx = (dx/dist) * speed
                                 vy = (dy/dist) * speed
                                 vz = (dz/dist) * speed
+                                
+                                # Send both velocity and position setpoints for better control
                                 self.send_velocity(drone, vx, vy, vz)
+                                # More frequent position updates
+                                for _ in range(2):
+                                    self.send_position(drone, x, y, z)
+                                    
+                                # Debug output for velocities
+                                if now - s.get('last_debug_log', 0) > 2.0:  # Every 2 seconds
+                                    self.get_logger().info(f"[{drone}] Commanded velocity: vx={vx:.1f}, vy={vy:.1f}, vz={vz:.1f} m/s")
+                                    s['last_debug_log'] = now
                             
                             # Calculate distance to target
                             dist = math.sqrt((x - current_x)**2 + (y - current_y)**2 + (z - current_z)**2)
