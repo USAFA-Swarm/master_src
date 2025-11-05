@@ -385,9 +385,11 @@ class Controller(Node):
     # ------------------- User Input -------------------
     def display_command_options(self):
         print("\nController ready. Available commands:")
-        print("  <drone> <x> <y> <z>     Set waypoint")
-        print("  heading <drone> <deg>    Set heading")
-        print("  land <drone>             Land drone")
+        print(f"Available drones: {', '.join(self.drones)}")
+        print("\nCommands:")
+        print("  Waypoint:  <drone> <x> <y> <z>      (Example: sim1 1.0 2.0 3.0)")
+        print("  Heading:   heading <drone> <deg>     (Example: heading sim1 90)")
+        print("  Landing:   land <drone>              (Example: land sim1)")
         print("\nWaiting for commands...")
 
     def user_input_loop(self):
@@ -399,11 +401,18 @@ class Controller(Node):
                 if not parts:
                     self.display_command_options()
                     continue
+
+                # For waypoint commands, first part is the drone name
+                # For other commands (land, heading), second part is the drone name
                 cmd = parts[0].lower()
-                drone = parts[1] if len(parts) > 1 else None
-                
+                if cmd in ['land', 'heading']:
+                    drone = parts[1] if len(parts) > 1 else None
+                else:
+                    # Waypoint command - first part is drone name
+                    drone = parts[0]
+                    
                 if not drone or drone not in self.drones:
-                    self.get_logger().error(f"Unknown drone name. Valid drones: {', '.join(self.drones)}")
+                    self.get_logger().error(f"Unknown drone name '{drone}'. Valid drones: {', '.join(self.drones)}")
                     self.display_command_options()
                     continue
 
@@ -438,11 +447,12 @@ class Controller(Node):
                     self.get_logger().info(f"[{drone}] Heading set to {degf} deg.")
                     self.display_command_options()
                 elif len(parts) == 4:  # waypoint command format: drone x y z
-                    drone = parts[0]  # drone name is the first part
                     try:
+                        # Skip drone name validation as it's already done above
                         x, y, z = map(float, parts[1:4])  # get coordinates from parts 1-3
+                        self.get_logger().info(f"[{drone}] Processing waypoint command: ({x}, {y}, {z})")
                     except ValueError:
-                        self.get_logger().error("Invalid coordinates. Must be numbers (x y z)")
+                        self.get_logger().error(f"[{drone}] Invalid coordinates. Must be numbers (x y z)")
                         self.display_command_options()
                         continue
 
@@ -574,7 +584,8 @@ class Controller(Node):
                                 time.sleep(0.2)
                             
                             if takeoff_successful:
-                                s['current_state'] = DroneState.HOVER
+                                s['current_state'] = DroneState.WAYPOINT  # Go directly to WAYPOINT state
+                                self.get_logger().info(f"[{drone}] Takeoff complete, starting movement to waypoint")
                                 # Calculate and set initial heading to waypoint
                                 pose = s.get('pose')
                                 if pose is not None:
@@ -585,8 +596,9 @@ class Controller(Node):
                                     target_heading = math.degrees(math.atan2(dy, dx))
                                     try:
                                         self.set_heading(drone, target_heading)
-                                    except Exception:
-                                        pass
+                                        self.get_logger().info(f"[{drone}] Setting initial heading to {target_heading:.1f} degrees")
+                                    except Exception as e:
+                                        self.get_logger().warn(f"[{drone}] Could not set initial heading: {e}")
                             else:
                                 self.get_logger().warn(f"[{drone}] Takeoff command accepted but no altitude increase detected. Trying fallback...")
                                 if self.ascend_fallback(drone, z):
@@ -602,26 +614,52 @@ class Controller(Node):
                 elif s['current_state'] == DroneState.HOVER:
                     if drone in self.target_waypoints:
                         x, y, z = self.target_waypoints[drone]
+                        s['current_state'] = DroneState.WAYPOINT  # Switch to WAYPOINT state for movement
+                        self.get_logger().info(f"[{drone}] Starting movement to waypoint ({x}, {y}, {z})")
+                        # Ensure mode is correct at the start of movement
+                        if not self.set_mode(drone, "GUIDED"):
+                            self.get_logger().error(f"[{drone}] Could not set GUIDED mode for waypoint control")
+
+                # Handle waypoint movement
+                elif s['current_state'] == DroneState.WAYPOINT:
+                    if drone in self.target_waypoints:
+                        x, y, z = self.target_waypoints[drone]
                         
-                        # First ensure we're in GUIDED mode for movement
+                        # Verify GUIDED mode
                         current_mode = None
                         if s.get('state') is not None:
                             current_mode = getattr(s['state'], 'mode', '')
                         if current_mode is None or 'GUIDED' not in str(current_mode).upper():
                             if not self.set_mode(drone, "GUIDED"):
-                                self.get_logger().error(f"[{drone}] Could not set GUIDED mode for waypoint control")
+                                self.get_logger().error(f"[{drone}] Lost GUIDED mode, retrying...")
                                 continue
 
-                        # Send position setpoint multiple times to ensure it's received
-                        for _ in range(3):
-                            self.send_position(drone, x, y, z)
-                        
-                        # Calculate heading to waypoint and check if we've arrived
+                        # Get current position
                         pose = s.get('pose')
                         if pose is not None:
                             current_x = getattr(pose.pose.position, 'x', 0.0)
                             current_y = getattr(pose.pose.position, 'y', 0.0)
                             current_z = getattr(pose.pose.position, 'z', 0.0)
+
+                            # Calculate distance and direction
+                            dx = x - current_x
+                            dy = y - current_y
+                            dz = z - current_z
+                            dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+
+                            # Use both position and velocity control for smoother movement
+                            self.send_position(drone, x, y, z)  # Send target position
+
+                            # Calculate desired velocity (proportional to distance)
+                            max_speed = 2.0  # m/s
+                            min_speed = 0.5  # m/s
+                            speed = min(max_speed, max(min_speed, dist * 0.5))  # Proportional to distance
+                            
+                            if dist > 0.1:  # Only send velocity if we're not too close
+                                vx = (dx/dist) * speed
+                                vy = (dy/dist) * speed
+                                vz = (dz/dist) * speed
+                                self.send_velocity(drone, vx, vy, vz)
                             
                             # Calculate distance to target
                             dist = math.sqrt((x - current_x)**2 + (y - current_y)**2 + (z - current_z)**2)
@@ -632,9 +670,21 @@ class Controller(Node):
                                 self.get_logger().info(f"[{drone}] Distance to waypoint: {dist:.2f} m")
                                 s['last_progress_log'] = now
                             
-                            # If we're close enough to the target
-                            if dist < 0.5:  # within 0.5 meters
+                            # Check both position and velocity for arrival
+                            vel = s.get('velocity')
+                            current_speed = 0.0
+                            if vel:
+                                vx = getattr(vel.twist.linear, 'x', 0.0)
+                                vy = getattr(vel.twist.linear, 'y', 0.0)
+                                vz = getattr(vel.twist.linear, 'z', 0.0)
+                                current_speed = math.sqrt(vx*vx + vy*vy + vz*vz)
+
+                            # If we're close enough and nearly stopped
+                            if dist < 0.5 and current_speed < 0.1:  # within 0.5 meters and almost stopped
+                                # Send zero velocity to ensure we stop
+                                self.send_velocity(drone, 0.0, 0.0, 0.0)
                                 self.get_logger().info(f"[{drone}] Successfully reached waypoint ({x}, {y}, {z})")
+                                s['current_state'] = DroneState.HOVER  # Return to HOVER state
                                 self.get_logger().info(f"[{drone}] Ready for next command")
                                 self.display_command_options()
                             else:
@@ -646,6 +696,14 @@ class Controller(Node):
                                     self.set_heading(drone, target_heading)
                                 except Exception:
                                     pass
+                                # Log movement progress more frequently
+                                now = time.time()
+                                if now - s.get('last_progress_log', 0) > 1.0:  # Log every second
+                                    self.get_logger().info(
+                                        f"[{drone}] Moving to waypoint: distance={dist:.2f}m, "
+                                        f"speed={current_speed:.2f}m/s, "
+                                        f"heading={target_heading:.1f}°"
+                                    )
                     # maintain explicit heading if requested
                     elif s.get('target_heading') is not None:
                         try:
