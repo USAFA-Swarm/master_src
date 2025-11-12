@@ -45,7 +45,8 @@ class Controller(Node):
                 'ready_to_arm': False,
                 'landing_attempts': 0,
                 'landing_initiated': False,
-                'last_mode_warn': 0.0
+                'last_mode_warn': 0.0,
+                'low_battery_warned': False  # Track if we've already warned about low battery
             }
 
             # Subscriptions
@@ -134,17 +135,24 @@ class Controller(Node):
         if old_battery is None:
             self.get_logger().info(f"[{drone}] Initial battery level: {msg.percentage*100:.1f}%")
         
-        # Always warn on low battery, not just during flight
+        # Check for low battery
         if msg.percentage < 0.20:
+            # If flying, initiate emergency landing
             if self.state[drone]['current_state'] in [DroneState.HOVER, DroneState.WAYPOINT]:
-                self.get_logger().warn(f"[{drone}] Low battery ({msg.percentage*100:.1f}%)! Initiating emergency landing.")
+                if not self.state[drone].get('low_battery_warned'):
+                    self.get_logger().warn(f"[{drone}] Low battery ({msg.percentage*100:.1f}%)! Initiating emergency landing.")
+                    self.state[drone]['low_battery_warned'] = True
                 self.state[drone]['current_state'] = DroneState.LAND
-                self.state[drone]['emergency_landing'] = True  # Flag to prevent new commands
+                self.state[drone]['emergency_landing'] = True
             else:
-                # If we're not flying, just warn about low battery preventing takeoff
-                self.get_logger().warn(f"[{drone}] Battery level too low for takeoff ({msg.percentage*100:.1f}%)")
-                self.get_logger().warn(f"[{drone}] Minimum 20% battery required for flight operations")
-                self.display_command_options()
+                # If we're not flying, warn once about low battery preventing takeoff
+                if not self.state[drone].get('low_battery_warned'):
+                    self.get_logger().warn(f"[{drone}] Battery level too low for takeoff ({msg.percentage*100:.1f}%)")
+                    self.get_logger().warn(f"[{drone}] Minimum 20% battery required for flight operations")
+                    self.state[drone]['low_battery_warned'] = True
+        else:
+            # Reset warning flag if battery is back above 20%
+            self.state[drone]['low_battery_warned'] = False
     def rc_callback(self, msg, drone):
         self.state[drone]['rc'] = msg
         if any(ch > 1500 for ch in msg.channels[:4]):
