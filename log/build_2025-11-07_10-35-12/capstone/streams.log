@@ -1,0 +1,38 @@
+[0.507s] Invoking command in '/home/dfec/master_src/capstone': PYTHONPATH=/home/dfec/master_src/build/capstone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/dfec/master_src/install/capstone/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/capstone build --build-base /home/dfec/master_src/build/capstone/build install --record /home/dfec/master_src/build/capstone/install.log --single-version-externally-managed install_data
+[0.626s] /home/dfec/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require'
+[0.626s]   warnings.warn(msg)
+[0.691s] running egg_info
+[0.701s] creating ../build/capstone/capstone.egg-info
+[0.701s] writing ../build/capstone/capstone.egg-info/PKG-INFO
+[0.701s] writing dependency_links to ../build/capstone/capstone.egg-info/dependency_links.txt
+[0.701s] writing entry points to ../build/capstone/capstone.egg-info/entry_points.txt
+[0.701s] writing requirements to ../build/capstone/capstone.egg-info/requires.txt
+[0.702s] writing top-level names to ../build/capstone/capstone.egg-info/top_level.txt
+[0.702s] writing manifest file '../build/capstone/capstone.egg-info/SOURCES.txt'
+[0.723s] reading manifest file '../build/capstone/capstone.egg-info/SOURCES.txt'
+[0.724s] adding license file 'LICENSE'
+[0.724s] writing manifest file '../build/capstone/capstone.egg-info/SOURCES.txt'
+[0.724s] running build
+[0.724s] running build_py
+[0.724s] creating /home/dfec/master_src/build/capstone/build/lib/capstone
+[0.724s] copying capstone/controller.py -> /home/dfec/master_src/build/capstone/build/lib/capstone
+[0.725s] copying capstone/__init__.py -> /home/dfec/master_src/build/capstone/build/lib/capstone
+[0.725s] running install
+[0.728s] running install_lib
+[0.739s] creating /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone
+[0.739s] copying /home/dfec/master_src/build/capstone/build/lib/capstone/controller.py -> /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone
+[0.739s] copying /home/dfec/master_src/build/capstone/build/lib/capstone/__init__.py -> /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone
+[0.740s] byte-compiling /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone/controller.py to controller.cpython-310.pyc
+[0.744s] byte-compiling /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone/__init__.py to __init__.cpython-310.pyc
+[0.744s] running install_data
+[0.745s] creating /home/dfec/master_src/install/capstone/share/ament_index/resource_index/packages
+[0.745s] copying resource/capstone -> /home/dfec/master_src/install/capstone/share/ament_index/resource_index/packages
+[0.745s] creating /home/dfec/master_src/install/capstone/share/capstone
+[0.745s] copying package.xml -> /home/dfec/master_src/install/capstone/share/capstone
+[0.745s] creating /home/dfec/master_src/install/capstone/share/capstone/launch
+[0.746s] running install_egg_info
+[0.757s] Copying ../build/capstone/capstone.egg-info to /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone-0.0.0-py3.10.egg-info
+[0.757s] running install_scripts
+[0.779s] Installing controller script to /home/dfec/master_src/install/capstone/lib/capstone
+[0.779s] writing list of installed files to '/home/dfec/master_src/build/capstone/install.log'
+[0.800s] Invoked command in '/home/dfec/master_src/capstone' returned '0': PYTHONPATH=/home/dfec/master_src/build/capstone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/dfec/master_src/install/capstone/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/capstone build --build-base /home/dfec/master_src/build/capstone/build install --record /home/dfec/master_src/build/capstone/install.log --single-version-externally-managed install_data

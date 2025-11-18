@@ -1,0 +1,35 @@
+[1.328s] Invoking command in '/home/dfec/master_src/apriltag': PYTHONPATH=/home/dfec/master_src/build/apriltag/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/dfec/master_src/install/apriltag/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/apriltag build --build-base /home/dfec/master_src/build/apriltag/build install --record /home/dfec/master_src/build/apriltag/install.log --single-version-externally-managed install_data
+[1.465s] /home/dfec/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require'
+[1.465s]   warnings.warn(msg)
+[1.534s] running egg_info
+[1.546s] creating ../build/apriltag/apriltag.egg-info
+[1.546s] writing ../build/apriltag/apriltag.egg-info/PKG-INFO
+[1.547s] writing dependency_links to ../build/apriltag/apriltag.egg-info/dependency_links.txt
+[1.547s] writing entry points to ../build/apriltag/apriltag.egg-info/entry_points.txt
+[1.548s] writing requirements to ../build/apriltag/apriltag.egg-info/requires.txt
+[1.548s] writing top-level names to ../build/apriltag/apriltag.egg-info/top_level.txt
+[1.548s] writing manifest file '../build/apriltag/apriltag.egg-info/SOURCES.txt'
+[1.576s] reading manifest file '../build/apriltag/apriltag.egg-info/SOURCES.txt'
+[1.576s] adding license file 'LICENSE'
+[1.576s] writing manifest file '../build/apriltag/apriltag.egg-info/SOURCES.txt'
+[1.577s] running build
+[1.577s] running build_py
+[1.577s] creating /home/dfec/master_src/build/apriltag/build/lib/apriltag
+[1.577s] copying apriltag/image_capture.py -> /home/dfec/master_src/build/apriltag/build/lib/apriltag
+[1.577s] copying apriltag/__init__.py -> /home/dfec/master_src/build/apriltag/build/lib/apriltag
+[1.577s] copying apriltag/apriltag.py -> /home/dfec/master_src/build/apriltag/build/lib/apriltag
+[1.577s] running install
+[1.581s] running install_lib
+[1.592s] creating /home/dfec/master_src/install/apriltag/lib/python3.10/site-packages/apriltag
+[1.592s] copying /home/dfec/master_src/build/apriltag/build/lib/apriltag/image_capture.py -> /home/dfec/master_src/install/apriltag/lib/python3.10/site-packages/apriltag
+[1.592s] copying /home/dfec/master_src/build/apriltag/build/lib/apriltag/__init__.py -> /home/dfec/master_src/install/apriltag/lib/python3.10/site-packages/apriltag
+[1.592s] copying /home/dfec/master_src/build/apriltag/build/lib/apriltag/apriltag.py -> /home/dfec/master_src/install/apriltag/lib/python3.10/site-packages/apriltag
+[1.592s] byte-compiling /home/dfec/master_src/install/apriltag/lib/python3.10/site-packages/apriltag/image_capture.py to image_capture.cpython-310.pyc
+[1.594s] byte-compiling /home/dfec/master_src/install/apriltag/lib/python3.10/site-packages/apriltag/__init__.py to __init__.cpython-310.pyc
+[1.594s] byte-compiling /home/dfec/master_src/install/apriltag/lib/python3.10/site-packages/apriltag/apriltag.py to apriltag.cpython-310.pyc
+[1.594s] running install_data
+[1.595s] creating /home/dfec/master_src/install/apriltag/share/ament_index/resource_index/packages
+[1.595s] copying resource/apriltag -> /home/dfec/master_src/install/apriltag/share/ament_index/resource_index/packages
+[1.595s] copying package.xml -> /home/dfec/master_src/install/apriltag/share/apriltag
+[1.595s] creating /home/dfec/master_src/install/apriltag/share/apriltag/config
+[1.595s] error: can't copy 'config/default_cam.yaml': doesn't exist or not a regular file
