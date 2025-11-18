@@ -61,6 +61,7 @@ class Controller(Node):
             # Create publishers on common topic variants so setpoints reach MAVROS whatever remapping is used
             pose_pubs = []
             vel_pubs = []
+            raw_pubs = []  # For PositionTarget (velocity + position control)
             try:
                 pose_pubs.append(self.create_publisher(PoseStamped, f'{ns}/setpoint_position/local', qos))
             except Exception:
@@ -127,32 +128,11 @@ class Controller(Node):
             self.get_logger().info(f"[{drone}] IMU data received")
         self.state[drone]['imu'] = msg
     def battery_callback(self, msg, drone):
-        # Store previous battery state for change detection
-        old_battery = self.state[drone].get('battery')
         self.state[drone]['battery'] = msg
-        
-        # Log initial battery reading
-        if old_battery is None:
-            self.get_logger().info(f"[{drone}] Initial battery level: {msg.percentage*100:.1f}%")
-        
-        # Check for low battery
-        if msg.percentage < 0.20:
-            # If flying, initiate emergency landing
-            if self.state[drone]['current_state'] in [DroneState.HOVER, DroneState.WAYPOINT]:
-                if not self.state[drone].get('low_battery_warned'):
-                    self.get_logger().warn(f"[{drone}] Low battery ({msg.percentage*100:.1f}%)! Initiating emergency landing.")
-                    self.state[drone]['low_battery_warned'] = True
-                self.state[drone]['current_state'] = DroneState.LAND
-                self.state[drone]['emergency_landing'] = True
-            else:
-                # If we're not flying, warn once about low battery preventing takeoff
-                if not self.state[drone].get('low_battery_warned'):
-                    self.get_logger().warn(f"[{drone}] Battery level too low for takeoff ({msg.percentage*100:.1f}%)")
-                    self.get_logger().warn(f"[{drone}] Minimum 20% battery required for flight operations")
-                    self.state[drone]['low_battery_warned'] = True
-        else:
-            # Reset warning flag if battery is back above 20%
-            self.state[drone]['low_battery_warned'] = False
+        # Only warn once about low battery
+        if msg.percentage < 0.20 and not self.state[drone].get('low_battery_warned'):
+            self.get_logger().warn(f"[{drone}] Low battery: {msg.percentage*100:.1f}%")
+            self.state[drone]['low_battery_warned'] = True
     def rc_callback(self, msg, drone):
         self.state[drone]['rc'] = msg
         if any(ch > 1500 for ch in msg.channels[:4]):
@@ -326,6 +306,13 @@ class Controller(Node):
         if not pubs:
             self.get_logger().warn(f"[{drone}] No pose publishers available to send setpoint")
             return
+        
+        # Log which topics we're publishing to (only once per drone to avoid spam)
+        if not self.state[drone].get('_logged_pose_topics'):
+            pub_topics = [pub.topic_name for pub in pubs]
+            self.get_logger().info(f"[{drone}] Publishing position setpoints to: {pub_topics}")
+            self.state[drone]['_logged_pose_topics'] = True
+            
         for pub in pubs:
             try:
                 pub.publish(msg)
@@ -471,10 +458,29 @@ class Controller(Node):
                         self.display_command_options()
                         continue
                     
+                    # Store the waypoint
                     self.target_waypoints[drone] = (x, y, z)
-                    self.state[drone]['ready_to_arm'] = True
-                    self.state[drone]['current_state'] = DroneState.ARM  # Ensure we're in ARM state
-                    self.get_logger().info(f"[{drone}] Waypoint set to ({x}, {y}, {z}). Ready to arm.")
+                    self.get_logger().info(f"[{drone}] Waypoint stored: ({x}, {y}, {z})")
+                    
+                    # Check if drone is already flying
+                    pose = self.state[drone].get('pose')
+                    is_flying = False
+                    if pose is not None:
+                        current_z = getattr(pose.pose.position, 'z', 0.0)
+                        is_flying = current_z > 0.5  # Consider flying if above 0.5m
+                    
+                    fcu_state = self.state[drone].get('state')
+                    is_armed = fcu_state and getattr(fcu_state, 'armed', False)
+                    
+                    if is_flying and is_armed:
+                        # Already flying - go directly to waypoint
+                        self.state[drone]['current_state'] = DroneState.WAYPOINT
+                        self.get_logger().info(f"[{drone}] Already flying - moving to waypoint ({x}, {y}, {z})")
+                    else:
+                        # Not flying - need to arm and takeoff first
+                        self.state[drone]['ready_to_arm'] = True
+                        self.state[drone]['current_state'] = DroneState.ARM
+                        self.get_logger().info(f"[{drone}] Waypoint set to ({x}, {y}, {z}). Preparing for takeoff.")
                 else:
                     self.get_logger().error('Invalid input format')
                     self.display_command_options()
@@ -624,7 +630,7 @@ class Controller(Node):
                         x, y, z = self.target_waypoints[drone]
                         s['current_state'] = DroneState.WAYPOINT  # Switch to WAYPOINT state for movement
                         self.get_logger().info(f"[{drone}] Starting movement to waypoint ({x}, {y}, {z})")
-                        # Ensure mode is correct at the start of movement
+                        # Ensure we're in GUIDED mode for waypoint navigation
                         if not self.set_mode(drone, "GUIDED"):
                             self.get_logger().error(f"[{drone}] Could not set GUIDED mode for waypoint control")
 
@@ -633,13 +639,13 @@ class Controller(Node):
                     if drone in self.target_waypoints:
                         x, y, z = self.target_waypoints[drone]
                         
-                        # Verify GUIDED mode
+                        # Verify we're in a flight mode (GUIDED or GUIDED_NOGPS)
                         current_mode = None
                         if s.get('state') is not None:
                             current_mode = getattr(s['state'], 'mode', '')
-                        if current_mode is None or 'GUIDED' not in str(current_mode).upper():
+                        if current_mode is None or ('GUIDED' not in str(current_mode).upper()):
                             if not self.set_mode(drone, "GUIDED"):
-                                self.get_logger().error(f"[{drone}] Lost GUIDED mode, retrying...")
+                                self.get_logger().error(f"[{drone}] Lost flight mode, retrying...")
                                 continue
 
                         # Get current position
@@ -649,87 +655,47 @@ class Controller(Node):
                             current_y = getattr(pose.pose.position, 'y', 0.0)
                             current_z = getattr(pose.pose.position, 'z', 0.0)
 
-                            # Calculate distance and direction
+                            # Calculate distance to target
                             dx = x - current_x
                             dy = y - current_y
                             dz = z - current_z
                             dist = math.sqrt(dx*dx + dy*dy + dz*dz)
 
-                            # Use both position and velocity control for smoother movement
-                            self.send_position(drone, x, y, z)  # Send target position
-
-                            # More aggressive velocity control
-                            max_speed = 8.0  # m/s - Significantly increased
-                            min_speed = 2.0  # m/s - Higher minimum speed
-                            
-                            # Proportional control with distance zones
-                            if dist > 20.0:  # Far from target
-                                speed = max_speed
-                            elif dist > 5.0:  # Medium distance
-                                speed = max(min_speed * 2, dist * 0.5)  # Faster approach
-                            else:  # Close to target
-                                speed = max(min_speed, dist * 0.8)  # Gentler deceleration
-                            
-                            if dist > 0.1:  # Only send velocity if we're not too close
-                                # Calculate velocity components
-                                vx = (dx/dist) * speed
-                                vy = (dy/dist) * speed
-                                vz = (dz/dist) * speed
-                                
-                                # Send both velocity and position setpoints for better control
-                                self.send_velocity(drone, vx, vy, vz)
-                                # More frequent position updates
-                                for _ in range(2):
-                                    self.send_position(drone, x, y, z)
-                                    
-                                # Debug output for velocities
-                                if now - s.get('last_debug_log', 0) > 2.0:  # Every 2 seconds
-                                    self.get_logger().info(f"[{drone}] Commanded velocity: vx={vx:.1f}, vy={vy:.1f}, vz={vz:.1f} m/s")
-                                    s['last_debug_log'] = now
-                            
-                            # Calculate distance to target
-                            dist = math.sqrt((x - current_x)**2 + (y - current_y)**2 + (z - current_z)**2)
-                            
-                            # Log progress periodically
-                            now = time.time()
-                            if now - s.get('last_progress_log', 0) > 2.0:  # Log every 2 seconds
-                                self.get_logger().info(f"[{drone}] Distance to waypoint: {dist:.2f} m")
-                                s['last_progress_log'] = now
-                            
-                            # Check both position and velocity for arrival
+                            # Calculate current speed
                             vel = s.get('velocity')
                             current_speed = 0.0
                             if vel:
-                                vx = getattr(vel.twist.linear, 'x', 0.0)
-                                vy = getattr(vel.twist.linear, 'y', 0.0)
-                                vz = getattr(vel.twist.linear, 'z', 0.0)
-                                current_speed = math.sqrt(vx*vx + vy*vy + vz*vz)
+                                vx_curr = getattr(vel.twist.linear, 'x', 0.0)
+                                vy_curr = getattr(vel.twist.linear, 'y', 0.0)
+                                vz_curr = getattr(vel.twist.linear, 'z', 0.0)
+                                current_speed = math.sqrt(vx_curr**2 + vy_curr**2 + vz_curr**2)
 
-                            # If we're close enough and nearly stopped
-                            if dist < 0.5 and current_speed < 0.1:  # within 0.5 meters and almost stopped
-                                # Send zero velocity to ensure we stop
-                                self.send_velocity(drone, 0.0, 0.0, 0.0)
-                                self.get_logger().info(f"[{drone}] Successfully reached waypoint ({x}, {y}, {z})")
-                                s['current_state'] = DroneState.HOVER  # Return to HOVER state
-                                self.get_logger().info(f"[{drone}] Ready for next command")
+                            # Send target position
+                            self.send_position(drone, x, y, z)
+
+                            # Check if close enough to waypoint
+                            if dist < 0.6:  # within 0.6 meters
+                                self.get_logger().info(f"[{drone}] Reached waypoint ({x:.1f}, {y:.1f}, {z:.1f})")
+                                s['current_state'] = DroneState.HOVER
+                                self.get_logger().info(f"[{drone}] Hovering. Ready for next command.")
                                 self.display_command_options()
                             else:
                                 # Calculate and update heading while moving
-                                dx = x - current_x
-                                dy = y - current_y
                                 target_heading = math.degrees(math.atan2(dy, dx))
                                 try:
                                     self.set_heading(drone, target_heading)
                                 except Exception:
                                     pass
-                                # Log movement progress more frequently
+                                
+                                # Log movement progress
                                 now = time.time()
                                 if now - s.get('last_progress_log', 0) > 1.0:  # Log every second
                                     self.get_logger().info(
-                                        f"[{drone}] Moving to waypoint: distance={dist:.2f}m, "
+                                        f"[{drone}] distance={dist:.2f}m, "
                                         f"speed={current_speed:.2f}m/s, "
                                         f"heading={target_heading:.1f}°"
                                     )
+                                    s['last_progress_log'] = now
                     # maintain explicit heading if requested
                     elif s.get('target_heading') is not None:
                         try:
