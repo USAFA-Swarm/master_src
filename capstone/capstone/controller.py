@@ -2,8 +2,9 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from geometry_msgs.msg import PoseStamped, TwistStamped
+from geographic_msgs.msg import GeoPoseStamped
 import math
-from sensor_msgs.msg import BatteryState, Imu
+from sensor_msgs.msg import BatteryState, Imu, NavSatFix
 from mavros_msgs.msg import State, RCIn
 from mavros_msgs.srv import CommandBool, SetMode, CommandTOL
 import threading
@@ -14,6 +15,7 @@ class DroneState:
     WAYPOINT = 'WAYPOINT'
     HOVER = 'HOVER'
     LAND = 'LAND'
+    CIRCLE = 'CIRCLE'
     RC_TAKEOVER = 'RC_TAKEOVER'
 
 class Controller(Node):
@@ -24,11 +26,10 @@ class Controller(Node):
         qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT)
 
         self.drones = drone_names
-        self.state = {}  
+        self.state = {}
         self.target_waypoints = {}
-        self.last_status_check = {}  # Track when we last checked drone status
-
-        # Initialize drones
+        self.circle_waypoints = {}  # Queue of waypoints for circle flight
+        self.last_status_check = {}  # Track when we last checked drone status        # Initialize drones
         for name in self.drones:
             ns = f'/{name}'
             self.state[name] = {
@@ -38,6 +39,7 @@ class Controller(Node):
                 'battery': None,
                 'state': None,
                 'rc': None,
+                'gps': None,
                 'current_state': DroneState.ARM,
                 'armed': False,
                 'manual_override': False,
@@ -46,22 +48,21 @@ class Controller(Node):
                 'landing_attempts': 0,
                 'landing_initiated': False,
                 'last_mode_warn': 0.0,
-                'low_battery_warned': False  # Track if we've already warned about low battery
+                'low_battery_warned': False
             }
 
             # Subscriptions
             self.create_subscription(State, f'{ns}/state', lambda msg, n=name: self.state_callback(msg, n), qos)
             self.create_subscription(PoseStamped, f'{ns}/local_position/pose', lambda msg, n=name: self.pose_callback(msg, n), qos)
+            self.create_subscription(NavSatFix, f'{ns}/global_position/global', lambda msg, n=name: self.gps_callback(msg, n), qos)
             self.create_subscription(TwistStamped, f'{ns}/local_position/velocity_local', lambda msg, n=name: self.vel_callback(msg, n), qos)
             self.create_subscription(Imu, f'{ns}/imu/data', lambda msg, n=name: self.imu_callback(msg, n), qos)
             self.create_subscription(BatteryState, f'{ns}/battery', lambda msg, n=name: self.battery_callback(msg, n), qos)
             self.create_subscription(RCIn, f'{ns}/rc/in', lambda msg, n=name: self.rc_callback(msg, n), qos)
 
             # Publishers
-            # Create publishers on common topic variants so setpoints reach MAVROS whatever remapping is used
             pose_pubs = []
-            vel_pubs = []
-            raw_pubs = []  # For PositionTarget (velocity + position control)
+            gps_pubs = []
             try:
                 pose_pubs.append(self.create_publisher(PoseStamped, f'{ns}/setpoint_position/local', qos))
             except Exception:
@@ -71,15 +72,15 @@ class Controller(Node):
             except Exception:
                 pass
             try:
-                vel_pubs.append(self.create_publisher(TwistStamped, f'{ns}/setpoint_velocity/cmd_vel', qos))
+                gps_pubs.append(self.create_publisher(GeoPoseStamped, f'{ns}/setpoint_position/global', qos))
             except Exception:
                 pass
             try:
-                vel_pubs.append(self.create_publisher(TwistStamped, f'{ns}/mavros/setpoint_velocity/cmd_vel', qos))
+                gps_pubs.append(self.create_publisher(GeoPoseStamped, f'{ns}/mavros/setpoint_position/global', qos))
             except Exception:
                 pass
             self.state[name]['pose_pubs'] = pose_pubs
-            self.state[name]['vel_pubs'] = vel_pubs
+            self.state[name]['gps_pubs'] = gps_pubs
 
             # Services: try to locate the correct service name among common remappings
             def _create_client_from_candidates(srv_type, candidates):
@@ -127,6 +128,12 @@ class Controller(Node):
         if self.state[drone].get('imu') is None:
             self.get_logger().info(f"[{drone}] IMU data received")
         self.state[drone]['imu'] = msg
+        
+    def gps_callback(self, msg, drone):
+        if self.state[drone].get('gps') is None:
+            self.get_logger().info(f"[{drone}] GPS data received")
+        self.state[drone]['gps'] = msg
+        
     def battery_callback(self, msg, drone):
         self.state[drone]['battery'] = msg
         # Only warn once about low battery
@@ -238,39 +245,7 @@ class Controller(Node):
         except Exception as e:
             self.get_logger().error(f"[{drone}] Exception during takeoff: {e}")
             return False
-    def ascend_fallback(self, drone, target_z, vz=0.6, timeout=15.0):
-        """Publish an upward velocity until target_z is reached or timeout.
-
-        Returns True if target_z reached, False otherwise.
-        """
-        start = time.time()
-        self.get_logger().info(f"[{drone}] Starting ascend fallback to {target_z} m (vz={vz} m/s)")
-        current_z = 0.0
-        while time.time() - start < timeout:
-            pose = self.state[drone].get('pose')
-            if pose is not None:
-                current_z = getattr(pose.pose.position, 'z', 0.0)
-            if current_z >= target_z - 0.1:
-                self.get_logger().info(f"[{drone}] Reached target altitude: {current_z:.2f} m")
-                # stop vertical motion
-                self.send_velocity(drone, 0.0, 0.0, 0.0)
-                return True
-            # command upward velocity
-            self.send_velocity(drone, 0.0, 0.0, -vz)  # mavros velocity z is often NED; negative vz => up for some setups
-            # Also publish a position setpoint at same altitude to help PX4 offboard controllers (best-effort)
-            try:
-                self.send_position(drone, self.target_waypoints.get(drone, (0, 0, target_z))[0],
-                                   self.target_waypoints.get(drone, (0, 0, target_z))[1], current_z + 0.5)
-            except Exception:
-                pass
-            time.sleep(0.2)
-
-        # timeout
-        self.get_logger().warn(f"[{drone}] Ascend fallback timed out after {timeout} s (last z={current_z:.2f})")
-        # stop motion
-        self.send_velocity(drone, 0.0, 0.0, 0.0)
-        return False
-
+            
     def _wait_for_future(self, future, timeout_sec=5.0):
         """Wait for an rclpy future to complete in a thread-safe way.
 
@@ -288,36 +263,38 @@ class Controller(Node):
                 return False
         return future.done()
 
-    def send_position(self, drone, x, y, z):
+    def send_position(self, drone, x, y, z, yaw_deg=None):
         msg = PoseStamped()
         msg.header.stamp = self.get_clock().now().to_msg()
-        msg.header.frame_id = 'map'  # or local_origin
+        msg.header.frame_id = 'map'
         msg.pose.position.x = x
         msg.pose.position.y = y
         msg.pose.position.z = z
-        # Keep current orientation if available to avoid sudden heading changes
-        pose = self.state[drone].get('pose')
-        if pose is not None and hasattr(pose.pose, 'orientation'):
-            msg.pose.orientation = pose.pose.orientation
+        
+        # Set orientation based on yaw if provided, otherwise keep current
+        if yaw_deg is not None:
+            yaw_rad = math.radians(float(yaw_deg))
+            qx, qy, qz, qw = self._yaw_to_quaternion(yaw_rad)
+            msg.pose.orientation.x = qx
+            msg.pose.orientation.y = qy
+            msg.pose.orientation.z = qz
+            msg.pose.orientation.w = qw
         else:
-            # Default to no rotation if we don't have current orientation
-            msg.pose.orientation.w = 1.0
+            pose = self.state[drone].get('pose')
+            if pose is not None and hasattr(pose.pose, 'orientation'):
+                msg.pose.orientation = pose.pose.orientation
+            else:
+                msg.pose.orientation.w = 1.0
+            
         pubs = self.state[drone].get('pose_pubs') or []
         if not pubs:
-            self.get_logger().warn(f"[{drone}] No pose publishers available to send setpoint")
+            self.get_logger().warn(f"[{drone}] No pose publishers available")
             return
-        
-        # Log which topics we're publishing to (only once per drone to avoid spam)
-        if not self.state[drone].get('_logged_pose_topics'):
-            pub_topics = [pub.topic_name for pub in pubs]
-            self.get_logger().info(f"[{drone}] Publishing position setpoints to: {pub_topics}")
-            self.state[drone]['_logged_pose_topics'] = True
             
         for pub in pubs:
             try:
                 pub.publish(msg)
             except Exception:
-                # ignore publish errors for individual pubs
                 pass
 
     def _yaw_to_quaternion(self, yaw_rad):
@@ -326,14 +303,11 @@ class Controller(Node):
         return (0.0, 0.0, math.sin(half), math.cos(half))
 
     def set_heading(self, drone, yaw_deg):
-        """Publish a PoseStamped with orientation set to yaw_deg so the vehicle faces that heading.
-
-        This uses existing position (or target waypoint) to avoid moving position.
-        """
+        """Set drone heading to yaw_deg using existing position."""
         yaw_rad = math.radians(float(yaw_deg))
         qx, qy, qz, qw = self._yaw_to_quaternion(yaw_rad)
 
-        # Use current pose if available, otherwise use target waypoint or zero
+        # Use current pose if available, otherwise use target waypoint
         pose = self.state[drone].get('pose')
         if pose is not None:
             x = pose.pose.position.x
@@ -353,24 +327,32 @@ class Controller(Node):
         msg.pose.orientation.w = qw
 
         pubs = self.state[drone].get('pose_pubs') or []
-        if not pubs:
-            self.get_logger().warn(f"[{drone}] No pose publishers available to set heading")
-            return
         for pub in pubs:
             try:
                 pub.publish(msg)
             except Exception:
                 pass
 
-    def send_velocity(self, drone, vx, vy, vz):
-        msg = TwistStamped()
-        msg.twist.linear.x = vx
-        msg.twist.linear.y = vy
-        msg.twist.linear.z = vz
-        pubs = self.state[drone].get('vel_pubs') or []
-        if not pubs:
-            self.get_logger().warn(f"[{drone}] No velocity publishers available to send setpoint")
-            return
+    def send_gps_waypoint(self, drone, lat, lon, alt, yaw_deg=None):
+        """Send GPS waypoint. Allows multiple drones to fly same GPS pattern."""
+        msg = GeoPoseStamped()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = 'map'
+        msg.pose.position.latitude = lat
+        msg.pose.position.longitude = lon
+        msg.pose.position.altitude = alt
+        
+        if yaw_deg is not None:
+            yaw_rad = math.radians(float(yaw_deg))
+            qx, qy, qz, qw = self._yaw_to_quaternion(yaw_rad)
+            msg.pose.orientation.x = qx
+            msg.pose.orientation.y = qy
+            msg.pose.orientation.z = qz
+            msg.pose.orientation.w = qw
+        else:
+            msg.pose.orientation.w = 1.0
+            
+        pubs = self.state[drone].get('gps_pubs') or []
         for pub in pubs:
             try:
                 pub.publish(msg)
@@ -383,6 +365,9 @@ class Controller(Node):
         print(f"Available drones: {', '.join(self.drones)}")
         print("\nCommands:")
         print("  Waypoint:  <drone> <x> <y> <z>      (Example: sim1 1.0 2.0 3.0)")
+        print("  Circle:    circle <drone1> [drone2 ...] <alt> <radius>")
+        print("             Single:    circle sim1 5.0 10.0")
+        print("             Formation: circle sim1 sim2 sim3 5.0 10.0")
         print("  Heading:   heading <drone> <deg>     (Example: heading sim1 90)")
         print("  Landing:   land <drone>              (Example: land sim1)")
         print("\nWaiting for commands...")
@@ -398,9 +383,9 @@ class Controller(Node):
                     continue
 
                 # For waypoint commands, first part is the drone name
-                # For other commands (land, heading), second part is the drone name
+                # For other commands (land, heading, circle), second part is the drone name
                 cmd = parts[0].lower()
-                if cmd in ['land', 'heading']:
+                if cmd in ['land', 'heading', 'circle']:
                     drone = parts[1] if len(parts) > 1 else None
                 else:
                     # Waypoint command - first part is drone name
@@ -427,6 +412,110 @@ class Controller(Node):
                 if cmd == 'land' and len(parts) == 2:
                     self.state[drone]['current_state'] = DroneState.LAND
                     self.get_logger().info(f"[{drone}] Landing command received.")
+                elif cmd == 'circle' and len(parts) >= 4:
+                    # Parse circle command: circle <drone1> [drone2 ...] <altitude> <radius>
+                    # Find where altitude/radius start (last 2 numeric args)
+                    try:
+                        altitude = float(parts[-2])
+                        radius = float(parts[-1])
+                        # All parts between 'circle' and last 2 are drone names
+                        formation_drones = parts[1:-2]
+                    except ValueError:
+                        self.get_logger().error("Invalid circle parameters - expected: circle <drone1> [drone2 ...] <altitude> <radius>")
+                        self.display_command_options()
+                        continue
+                    
+                    # Validate all drones exist
+                    invalid_drones = [d for d in formation_drones if d not in self.drones]
+                    if invalid_drones:
+                        self.get_logger().error(f"Unknown drone(s): {', '.join(invalid_drones)}. Valid drones: {', '.join(self.drones)}")
+                        self.display_command_options()
+                        continue
+                    
+                    # Check battery for all drones
+                    low_battery_drones = []
+                    for d in formation_drones:
+                        battery = self.state[d].get('battery')
+                        if battery and battery.percentage < 0.20:
+                            low_battery_drones.append(f"{d} ({battery.percentage*100:.1f}%)")
+                    if low_battery_drones:
+                        self.get_logger().error(f"Battery too low for: {', '.join(low_battery_drones)}")
+                        self.display_command_options()
+                        continue
+                    
+                    # Check initialization for all drones
+                    uninitialized = []
+                    for d in formation_drones:
+                        if not all([self.state[d].get(key) for key in ['state', 'battery', 'pose']]):
+                            uninitialized.append(d)
+                    if uninitialized:
+                        self.get_logger().error(f"Drones not initialized: {', '.join(uninitialized)}")
+                        self.display_command_options()
+                        continue
+                    
+                    # Determine GPS vs local mode from first drone
+                    first_drone = formation_drones[0]
+                    gps = self.state[first_drone].get('gps')
+                    use_gps = gps and hasattr(gps, 'latitude') and gps.latitude != 0
+                    
+                    # If GPS mode, verify all drones have GPS
+                    if use_gps:
+                        no_gps_drones = []
+                        for d in formation_drones:
+                            d_gps = self.state[d].get('gps')
+                            if not (d_gps and hasattr(d_gps, 'latitude') and d_gps.latitude != 0):
+                                no_gps_drones.append(d)
+                        if no_gps_drones:
+                            self.get_logger().error(f"GPS not available for: {', '.join(no_gps_drones)}")
+                            self.display_command_options()
+                            continue
+                    
+                    num_drones = len(formation_drones)
+                    
+                    # Generate waypoints for each drone with phase offset
+                    for idx, d in enumerate(formation_drones):
+                        # Calculate phase offset for even spacing
+                        phase_offset = 2 * math.pi * idx / num_drones
+                        
+                        if use_gps:
+                            # GPS mode - generate lat/lon waypoints
+                            d_gps = self.state[d].get('gps')
+                            lat0, lon0 = d_gps.latitude, d_gps.longitude
+                            # Convert radius to degrees (approx 111km per degree)
+                            r_lat = radius / 111000.0
+                            r_lon = radius / (111000.0 * math.cos(math.radians(lat0)))
+                            waypoints = [(lat0 + r_lat * math.sin(i * math.pi / 8 + phase_offset),
+                                         lon0 + r_lon * math.cos(i * math.pi / 8 + phase_offset), altitude, True)
+                                        for i in range(17)]
+                            waypoints.append((lat0, lon0, altitude, True))
+                            self.get_logger().info(f"[{d}] Circle in GPS mode at ({lat0:.6f}, {lon0:.6f}), phase offset {math.degrees(phase_offset):.1f}°")
+                        else:
+                            # Local mode - generate x/y waypoints
+                            pose = self.state[d].get('pose')
+                            cx, cy = (0.0, 0.0) if not pose else (pose.pose.position.x, pose.pose.position.y)
+                            waypoints = [(cx + radius * math.cos(i * math.pi / 8 + phase_offset), 
+                                         cy + radius * math.sin(i * math.pi / 8 + phase_offset), altitude, False) 
+                                        for i in range(17)]
+                            waypoints.append((cx, cy, altitude, False))
+                            self.get_logger().info(f"[{d}] Circle in local mode at ({cx:.2f}, {cy:.2f}), phase offset {math.degrees(phase_offset):.1f}°")
+                        
+                        self.circle_waypoints[d] = waypoints
+                        self.target_waypoints[d] = waypoints[0]
+                        
+                        # Check if flying
+                        is_flying = self.state[d].get('pose') and self.state[d]['pose'].pose.position.z > 0.5
+                        is_armed = self.state[d].get('state') and self.state[d]['state'].armed
+                        
+                        if is_flying and is_armed:
+                            self.state[d]['current_state'] = DroneState.CIRCLE
+                            self.get_logger().info(f"[{d}] Starting circle: alt={altitude}m, radius={radius}m")
+                        else:
+                            self.state[d]['ready_to_arm'] = True
+                            self.state[d]['current_state'] = DroneState.ARM
+                            self.get_logger().info(f"[{d}] Circle queued. Taking off to {altitude}m")
+                    
+                    mode_str = "GPS" if use_gps else "local"
+                    self.get_logger().info(f"Formation circle started for {num_drones} drones in {mode_str} mode")
                 elif cmd == 'heading' and len(parts) == 3:
                     try:
                         degf = float(parts[2])
@@ -598,31 +687,14 @@ class Controller(Node):
                                 time.sleep(0.2)
                             
                             if takeoff_successful:
-                                s['current_state'] = DroneState.WAYPOINT  # Go directly to WAYPOINT state
+                                s['current_state'] = DroneState.CIRCLE if drone in self.circle_waypoints else DroneState.WAYPOINT
                                 self.get_logger().info(f"[{drone}] Takeoff complete, starting movement to waypoint")
-                                # Calculate and set initial heading to waypoint
-                                pose = s.get('pose')
-                                if pose is not None:
-                                    current_x = getattr(pose.pose.position, 'x', 0.0)
-                                    current_y = getattr(pose.pose.position, 'y', 0.0)
-                                    dx = x - current_x
-                                    dy = y - current_y
-                                    target_heading = math.degrees(math.atan2(dy, dx))
-                                    try:
-                                        self.set_heading(drone, target_heading)
-                                        self.get_logger().info(f"[{drone}] Setting initial heading to {target_heading:.1f} degrees")
-                                    except Exception as e:
-                                        self.get_logger().warn(f"[{drone}] Could not set initial heading: {e}")
                             else:
-                                self.get_logger().warn(f"[{drone}] Takeoff command accepted but no altitude increase detected. Trying fallback...")
-                                if self.ascend_fallback(drone, z):
-                                    s['current_state'] = DroneState.HOVER
-                                else:
-                                    self.get_logger().error(f"[{drone}] Takeoff failed - could not achieve altitude")
+                                self.get_logger().error(f"[{drone}] Takeoff failed - no altitude increase detected")
                         else:
                             self.get_logger().error(f"[{drone}] Takeoff command failed")
                     else:
-                        self.get_logger().error(f"[{drone}] Mode change to GUIDED failed. Staying in {s['current_state']}")
+                        self.get_logger().error(f"[{drone}] Mode change to GUIDED failed")
 
                 # Move to waypoint
                 elif s['current_state'] == DroneState.HOVER:
@@ -661,47 +733,72 @@ class Controller(Node):
                             dz = z - current_z
                             dist = math.sqrt(dx*dx + dy*dy + dz*dz)
 
-                            # Calculate current speed
-                            vel = s.get('velocity')
-                            current_speed = 0.0
-                            if vel:
-                                vx_curr = getattr(vel.twist.linear, 'x', 0.0)
-                                vy_curr = getattr(vel.twist.linear, 'y', 0.0)
-                                vz_curr = getattr(vel.twist.linear, 'z', 0.0)
-                                current_speed = math.sqrt(vx_curr**2 + vy_curr**2 + vz_curr**2)
-
-                            # Send target position
-                            self.send_position(drone, x, y, z)
-
-                            # Check if close enough to waypoint
-                            if dist < 0.6:  # within 0.6 meters
+                            # Check if reached waypoint
+                            if dist < 0.6:
                                 self.get_logger().info(f"[{drone}] Reached waypoint ({x:.1f}, {y:.1f}, {z:.1f})")
                                 s['current_state'] = DroneState.HOVER
+                                # Clear the waypoint so we don't immediately re-enter WAYPOINT state
+                                if drone in self.target_waypoints:
+                                    del self.target_waypoints[drone]
                                 self.get_logger().info(f"[{drone}] Hovering. Ready for next command.")
                                 self.display_command_options()
                             else:
-                                # Calculate and update heading while moving
+                                # Send target position with heading toward waypoint
                                 target_heading = math.degrees(math.atan2(dy, dx))
-                                try:
-                                    self.set_heading(drone, target_heading)
-                                except Exception:
-                                    pass
-                                
-                                # Log movement progress
-                                now = time.time()
-                                if now - s.get('last_progress_log', 0) > 1.0:  # Log every second
-                                    self.get_logger().info(
-                                        f"[{drone}] distance={dist:.2f}m, "
-                                        f"speed={current_speed:.2f}m/s, "
-                                        f"heading={target_heading:.1f}°"
-                                    )
-                                    s['last_progress_log'] = now
+                                self.send_position(drone, x, y, z, yaw_deg=target_heading)
                     # maintain explicit heading if requested
                     elif s.get('target_heading') is not None:
                         try:
                             self.set_heading(drone, s['target_heading'])
                         except Exception:
                             pass
+
+                # Handle circle flight
+                elif s['current_state'] == DroneState.CIRCLE:
+                    if drone in self.circle_waypoints and self.circle_waypoints[drone]:
+                        wp = self.circle_waypoints[drone][0]
+                        is_gps = len(wp) == 4 and wp[3]  # Check if GPS waypoint
+                        
+                        if is_gps:
+                            # GPS mode
+                            lat, lon, alt = wp[0], wp[1], wp[2]
+                            gps = s.get('gps')
+                            if gps and hasattr(gps, 'latitude'):
+                                # Calculate distance using haversine approximation
+                                dlat = math.radians(lat - gps.latitude)
+                                dlon = math.radians(lon - gps.longitude)
+                                a = math.sin(dlat/2)**2 + math.cos(math.radians(gps.latitude)) * math.cos(math.radians(lat)) * math.sin(dlon/2)**2
+                                dist = 6371000 * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+                                
+                                if dist < 1.5:  # Reached waypoint
+                                    self.circle_waypoints[drone].pop(0)
+                                    if not self.circle_waypoints[drone]:
+                                        self.get_logger().info(f"[{drone}] Circle complete")
+                                        s['current_state'] = DroneState.LAND
+                                        del self.circle_waypoints[drone]
+                                else:
+                                    heading = math.degrees(math.atan2(math.sin(dlon) * math.cos(math.radians(lat)),
+                                                          math.cos(math.radians(gps.latitude)) * math.sin(math.radians(lat)) -
+                                                          math.sin(math.radians(gps.latitude)) * math.cos(math.radians(lat)) * math.cos(dlon)))
+                                    self.send_gps_waypoint(drone, lat, lon, alt, yaw_deg=heading)
+                        else:
+                            # Local mode
+                            x, y, z = wp[0], wp[1], wp[2]
+                            pose = s.get('pose')
+                            if pose is not None:
+                                current_x = getattr(pose.pose.position, 'x', 0.0)
+                                current_y = getattr(pose.pose.position, 'y', 0.0)
+                                dist = math.sqrt((x - current_x)**2 + (y - current_y)**2)
+
+                                if dist < 1.0:
+                                    self.circle_waypoints[drone].pop(0)
+                                    if not self.circle_waypoints[drone]:
+                                        self.get_logger().info(f"[{drone}] Circle complete")
+                                        s['current_state'] = DroneState.LAND
+                                        del self.circle_waypoints[drone]
+                                else:
+                                    target_heading = math.degrees(math.atan2(y - current_y, x - current_x))
+                                    self.send_position(drone, x, y, z, yaw_deg=target_heading)
 
                 # Landing
                 elif s['current_state'] == DroneState.LAND:
