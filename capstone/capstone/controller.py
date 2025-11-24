@@ -478,23 +478,23 @@ class Controller(Node):
                         phase_offset = 2 * math.pi * idx / num_drones
                         
                         if use_gps:
-                            # GPS mode - generate lat/lon waypoints
+                            # GPS mode - generate lat/lon waypoints (clockwise by negating angle)
                             d_gps = self.state[d].get('gps')
                             lat0, lon0 = d_gps.latitude, d_gps.longitude
                             # Convert radius to degrees (approx 111km per degree)
                             r_lat = radius / 111000.0
                             r_lon = radius / (111000.0 * math.cos(math.radians(lat0)))
-                            waypoints = [(lat0 + r_lat * math.sin(i * math.pi / 8 + phase_offset),
-                                         lon0 + r_lon * math.cos(i * math.pi / 8 + phase_offset), altitude, True)
+                            waypoints = [(lat0 + r_lat * math.sin(-(i * math.pi / 8 + phase_offset)),
+                                         lon0 + r_lon * math.cos(-(i * math.pi / 8 + phase_offset)), altitude, True)
                                         for i in range(17)]
                             waypoints.append((lat0, lon0, altitude, True))
                             self.get_logger().info(f"[{d}] Circle in GPS mode at ({lat0:.6f}, {lon0:.6f}), phase offset {math.degrees(phase_offset):.1f}°")
                         else:
-                            # Local mode - generate x/y waypoints
+                            # Local mode - generate x/y waypoints (clockwise by negating angle)
                             pose = self.state[d].get('pose')
                             cx, cy = (0.0, 0.0) if not pose else (pose.pose.position.x, pose.pose.position.y)
-                            waypoints = [(cx + radius * math.cos(i * math.pi / 8 + phase_offset), 
-                                         cy + radius * math.sin(i * math.pi / 8 + phase_offset), altitude, False) 
+                            waypoints = [(cx + radius * math.cos(-(i * math.pi / 8 + phase_offset)), 
+                                         cy + radius * math.sin(-(i * math.pi / 8 + phase_offset)), altitude, False) 
                                         for i in range(17)]
                             waypoints.append((cx, cy, altitude, False))
                             self.get_logger().info(f"[{d}] Circle in local mode at ({cx:.2f}, {cy:.2f}), phase offset {math.degrees(phase_offset):.1f}°")
@@ -617,7 +617,12 @@ class Controller(Node):
                         self.display_command_options()
                         continue
 
-                    x, y, z = self.target_waypoints[drone]
+                    waypoint = self.target_waypoints[drone]
+                    # Handle both 3-tuple (x,y,z) and 4-tuple (x,y,z,is_gps) formats
+                    if len(waypoint) == 4:
+                        x, y, z, is_gps = waypoint
+                    else:
+                        x, y, z = waypoint
 
                     # First ensure we're in STABILIZE mode for arming
                     if not self.set_mode(drone, "STABILIZE"):
@@ -777,9 +782,10 @@ class Controller(Node):
                                         s['current_state'] = DroneState.LAND
                                         del self.circle_waypoints[drone]
                                 else:
-                                    heading = math.degrees(math.atan2(math.sin(dlon) * math.cos(math.radians(lat)),
+                                    # For clockwise circle, negate heading and add 90° to face tangent
+                                    heading = -math.degrees(math.atan2(math.sin(dlon) * math.cos(math.radians(lat)),
                                                           math.cos(math.radians(gps.latitude)) * math.sin(math.radians(lat)) -
-                                                          math.sin(math.radians(gps.latitude)) * math.cos(math.radians(lat)) * math.cos(dlon)))
+                                                          math.sin(math.radians(gps.latitude)) * math.cos(math.radians(lat)) * math.cos(dlon))) + 90.0
                                     self.send_gps_waypoint(drone, lat, lon, alt, yaw_deg=heading)
                         else:
                             # Local mode
@@ -797,7 +803,8 @@ class Controller(Node):
                                         s['current_state'] = DroneState.LAND
                                         del self.circle_waypoints[drone]
                                 else:
-                                    target_heading = math.degrees(math.atan2(y - current_y, x - current_x))
+                                    # For clockwise circle, negate heading and add 90° to face tangent
+                                    target_heading = -math.degrees(math.atan2(y - current_y, x - current_x)) + 90.0
                                     self.send_position(drone, x, y, z, yaw_deg=target_heading)
 
                 # Landing
