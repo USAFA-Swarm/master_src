@@ -1,0 +1,26 @@
+[1.054s] Invoking command in '/home/dfec/master_src/drone_interface': PYTHONPATH=/home/dfec/master_src/build/drone_interface/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/dfec/master_src/install/drone_interface/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/drone_interface build --build-base /home/dfec/master_src/build/drone_interface/build install --record /home/dfec/master_src/build/drone_interface/install.log --single-version-externally-managed install_data
+[1.244s] /home/dfec/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require'
+[1.244s]   warnings.warn(msg)
+[1.329s] running egg_info
+[1.340s] creating ../build/drone_interface/drone_interface.egg-info
+[1.341s] writing ../build/drone_interface/drone_interface.egg-info/PKG-INFO
+[1.344s] writing dependency_links to ../build/drone_interface/drone_interface.egg-info/dependency_links.txt
+[1.344s] writing entry points to ../build/drone_interface/drone_interface.egg-info/entry_points.txt
+[1.344s] writing requirements to ../build/drone_interface/drone_interface.egg-info/requires.txt
+[1.344s] writing top-level names to ../build/drone_interface/drone_interface.egg-info/top_level.txt
+[1.344s] writing manifest file '../build/drone_interface/drone_interface.egg-info/SOURCES.txt'
+[1.368s] reading manifest file '../build/drone_interface/drone_interface.egg-info/SOURCES.txt'
+[1.368s] adding license file 'LICENSE'
+[1.369s] writing manifest file '../build/drone_interface/drone_interface.egg-info/SOURCES.txt'
+[1.369s] running build
+[1.369s] running build_py
+[1.369s] creating /home/dfec/master_src/build/drone_interface/build/lib/drone_interface
+[1.369s] copying drone_interface/__init__.py -> /home/dfec/master_src/build/drone_interface/build/lib/drone_interface
+[1.369s] running install
+[1.373s] running install_lib
+[1.385s] creating /home/dfec/master_src/install/drone_interface/lib/python3.10/site-packages/drone_interface
+[1.385s] copying /home/dfec/master_src/build/drone_interface/build/lib/drone_interface/__init__.py -> /home/dfec/master_src/install/drone_interface/lib/python3.10/site-packages/drone_interface
+[1.385s] byte-compiling /home/dfec/master_src/install/drone_interface/lib/python3.10/site-packages/drone_interface/__init__.py to __init__.cpython-310.pyc
+[1.385s] running install_data
+[1.385s] creating /home/dfec/master_src/install/drone_interface/share/ament_index/resource_index/packages
+[1.385s] error: can't copy 'resource/drone_interface': doesn't exist or not a regular file
