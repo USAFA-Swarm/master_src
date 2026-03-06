@@ -1,0 +1,10 @@
+[0.501s] Invoking command in '/home/dfec/master_src/build/capstone': PYTHONPATH=/home/dfec/master_src/build/capstone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/dfec/master_src/install/capstone/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --uninstall --editable --build-directory /home/dfec/master_src/build/capstone/build
+[0.609s] /home/dfec/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require'
+[0.609s]   warnings.warn(msg)
+[0.641s] usage: setup.py [global_opts] cmd1 [cmd1_opts] [cmd2 [cmd2_opts] ...]
+[0.641s]    or: setup.py --help [cmd1 cmd2 ...]
+[0.641s]    or: setup.py --help-commands
+[0.641s]    or: setup.py cmd --help
+[0.641s] 
+[0.641s] error: option --uninstall not recognized
+[0.656s] Invoked command in '/home/dfec/master_src/build/capstone' returned '1': PYTHONPATH=/home/dfec/master_src/build/capstone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/dfec/master_src/install/capstone/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --uninstall --editable --build-directory /home/dfec/master_src/build/capstone/build

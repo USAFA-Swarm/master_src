@@ -1,0 +1,26 @@
+running egg_info
+writing ../build/capstone/capstone.egg-info/PKG-INFO
+writing dependency_links to ../build/capstone/capstone.egg-info/dependency_links.txt
+writing entry points to ../build/capstone/capstone.egg-info/entry_points.txt
+writing requirements to ../build/capstone/capstone.egg-info/requires.txt
+writing top-level names to ../build/capstone/capstone.egg-info/top_level.txt
+reading manifest file '../build/capstone/capstone.egg-info/SOURCES.txt'
+adding license file 'LICENSE'
+writing manifest file '../build/capstone/capstone.egg-info/SOURCES.txt'
+running build
+running build_py
+copying capstone/controller.py -> /home/dfec/master_src/build/capstone/build/lib/capstone
+copying capstone/__init__.py -> /home/dfec/master_src/build/capstone/build/lib/capstone
+running install
+running install_lib
+copying /home/dfec/master_src/build/capstone/build/lib/capstone/controller.py -> /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone
+byte-compiling /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone/controller.py to controller.cpython-310.pyc
+running install_data
+copying resource/capstone -> /home/dfec/master_src/install/capstone/share/ament_index/resource_index/packages
+copying package.xml -> /home/dfec/master_src/install/capstone/share/capstone
+running install_egg_info
+removing '/home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone-0.0.0-py3.10.egg-info' (and everything under it)
+Copying ../build/capstone/capstone.egg-info to /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone-0.0.0-py3.10.egg-info
+running install_scripts
+Installing controller script to /home/dfec/master_src/install/capstone/lib/capstone
+writing list of installed files to '/home/dfec/master_src/build/capstone/install.log'

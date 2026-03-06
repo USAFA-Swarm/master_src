@@ -1,10 +1,10 @@
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy
-from geometry_msgs.msg import PoseStamped, TwistStamped
+from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
+from geometry_msgs.msg import PoseStamped
 from geographic_msgs.msg import GeoPoseStamped
 import math
-from sensor_msgs.msg import BatteryState, Imu, NavSatFix
+from sensor_msgs.msg import BatteryState, NavSatFix
 from mavros_msgs.msg import State, RCIn
 from mavros_msgs.srv import CommandBool, SetMode, CommandTOL
 import threading
@@ -22,8 +22,13 @@ class Controller(Node):
     def __init__(self, drone_names):
         super().__init__('controller')
 
-        # Use BEST_EFFORT QoS to match MAVROS
-        qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT)
+        # Explicit QoS to match MAVROS publisher settings (BEST_EFFORT, VOLATILE, KEEP_LAST)
+        qos = QoSProfile(
+            depth=10,
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_LAST,
+        )
 
         self.drones = drone_names
         self.state = {}
@@ -34,20 +39,16 @@ class Controller(Node):
             ns = f'/{name}'
             self.state[name] = {
                 'pose': None,
-                'velocity': None,
-                'imu': None,
                 'battery': None,
                 'state': None,
                 'rc': None,
                 'gps': None,
                 'current_state': DroneState.ARM,
-                'armed': False,
                 'manual_override': False,
                 'target_heading': None,
                 'ready_to_arm': False,
                 'landing_attempts': 0,
                 'landing_initiated': False,
-                'last_mode_warn': 0.0,
                 'low_battery_warned': False
             }
 
@@ -55,8 +56,6 @@ class Controller(Node):
             self.create_subscription(State, f'{ns}/state', lambda msg, n=name: self.state_callback(msg, n), qos)
             self.create_subscription(PoseStamped, f'{ns}/local_position/pose', lambda msg, n=name: self.pose_callback(msg, n), qos)
             self.create_subscription(NavSatFix, f'{ns}/global_position/global', lambda msg, n=name: self.gps_callback(msg, n), qos)
-            self.create_subscription(TwistStamped, f'{ns}/local_position/velocity_local', lambda msg, n=name: self.vel_callback(msg, n), qos)
-            self.create_subscription(Imu, f'{ns}/imu/data', lambda msg, n=name: self.imu_callback(msg, n), qos)
             self.create_subscription(BatteryState, f'{ns}/battery', lambda msg, n=name: self.battery_callback(msg, n), qos)
             self.create_subscription(RCIn, f'{ns}/rc/in', lambda msg, n=name: self.rc_callback(msg, n), qos)
 
@@ -121,14 +120,6 @@ class Controller(Node):
             self.get_logger().info(f"[{drone}] Position data received")
         self.state[drone]['pose'] = msg
         
-    def vel_callback(self, msg, drone): 
-        self.state[drone]['velocity'] = msg
-        
-    def imu_callback(self, msg, drone): 
-        if self.state[drone].get('imu') is None:
-            self.get_logger().info(f"[{drone}] IMU data received")
-        self.state[drone]['imu'] = msg
-        
     def gps_callback(self, msg, drone):
         if self.state[drone].get('gps') is None:
             self.get_logger().info(f"[{drone}] GPS data received")
@@ -142,10 +133,6 @@ class Controller(Node):
             self.state[drone]['low_battery_warned'] = True
     def rc_callback(self, msg, drone):
         self.state[drone]['rc'] = msg
-        if any(ch > 1500 for ch in msg.channels[:4]):
-            self.get_logger().warn(f"[{drone}] RC takeover detected.")
-            self.state[drone]['current_state'] = DroneState.RC_TAKEOVER
-            self.state[drone]['manual_override'] = True
 
     # ------------------- MAVROS Commands -------------------
     def arm(self, drone):
@@ -315,7 +302,7 @@ class Controller(Node):
             z = pose.pose.position.z
         else:
             wp = self.target_waypoints.get(drone, (0.0, 0.0, 0.0))
-            x, y, z = wp
+            x, y, z = wp[0], wp[1], wp[2]
 
         msg = PoseStamped()
         msg.pose.position.x = x
@@ -396,12 +383,6 @@ class Controller(Node):
                     self.display_command_options()
                     continue
 
-                # Check if drone is in emergency landing
-                if self.state[drone].get('emergency_landing', False):
-                    self.get_logger().warn(f"[{drone}] Cannot accept commands - emergency landing in progress")
-                    self.display_command_options()
-                    continue
-
                 # Check if we have received necessary status information
                 if not all([self.state[drone].get(key) for key in ['state', 'battery', 'pose']]):
                     self.get_logger().error(f"[{drone}] Cannot process command - waiting for drone to initialize")
@@ -410,6 +391,7 @@ class Controller(Node):
 
                 # Process commands
                 if cmd == 'land' and len(parts) == 2:
+                    self.state[drone]['manual_override'] = False
                     self.state[drone]['current_state'] = DroneState.LAND
                     self.get_logger().info(f"[{drone}] Landing command received.")
                 elif cmd == 'circle' and len(parts) >= 4:
@@ -501,7 +483,8 @@ class Controller(Node):
                         
                         self.circle_waypoints[d] = waypoints
                         self.target_waypoints[d] = waypoints[0]
-                        
+                        self.state[d]['manual_override'] = False
+
                         # Check if flying
                         is_flying = self.state[d].get('pose') and self.state[d]['pose'].pose.position.z > 0.5
                         is_armed = self.state[d].get('state') and self.state[d]['state'].armed
@@ -547,8 +530,11 @@ class Controller(Node):
                         self.display_command_options()
                         continue
                     
-                    # Store the waypoint
+                    # Store the waypoint, clear any stale circle data, and resume autonomous control
+                    self.state[drone]['manual_override'] = False
                     self.target_waypoints[drone] = (x, y, z)
+                    if drone in self.circle_waypoints:
+                        del self.circle_waypoints[drone]
                     self.get_logger().info(f"[{drone}] Waypoint stored: ({x}, {y}, {z})")
                     
                     # Check if drone is already flying
@@ -576,30 +562,40 @@ class Controller(Node):
             except Exception as e:
                 print("Input error:", e)
 
+    def _in_guided_mode(self, drone, s):
+        """Return True if already in GUIDED mode or successfully set it."""
+        current_mode = getattr(s['state'], 'mode', '') if s.get('state') is not None else None
+        if current_mode and 'GUIDED' in str(current_mode).upper():
+            return True
+        return self.set_mode(drone, "GUIDED")
+
     # ------------------- State Machine -------------------
     def state_machine_loop(self):
-        rate = 20.0  # Hz
+        rate = 50.0
         while rclpy.ok():
             for drone in self.drones:
+              try:
                 s = self.state[drone]
 
-                # Periodically check and report drone status if we're waiting for initialization
+                # Log missing initialization data periodically
                 now = time.time()
                 if not all([s.get(key) for key in ['state', 'battery', 'pose']]):
-                    if now - self.last_status_check.get(drone, 0.0) > 5.0:  # Check every 5 seconds
-                        missing = []
-                        if not s.get('state'): missing.append('FCU state')
-                        if not s.get('battery'): missing.append('battery status')
-                        if not s.get('pose'): missing.append('position data')
+                    if now - self.last_status_check.get(drone, 0.0) > 5.0:
+                        missing = [label for key, label in [('state', 'FCU state'), ('battery', 'battery status'), ('pose', 'position data')] if not s.get(key)]
                         self.get_logger().warn(f"[{drone}] Still waiting for: {', '.join(missing)}")
                         self.last_status_check[drone] = now
 
                 if s['manual_override']:
                     continue
 
-                # ensure we have a connection/state before trying to arm or change mode
+                # Exit on RTL
+                if s.get('state') is not None:
+                    current_mode = getattr(s['state'], 'mode', None)
+                    if current_mode is not None and 'RTL' in str(current_mode).upper():
+                        self.get_logger().warn(f"[{drone}] RTL mode detected - exiting autonomous control loop")
+                        return
+
                 if s['state'] is None or not getattr(s['state'], 'connected', True):
-                    # no valid state yet
                     self.get_logger().debug(f"[{drone}] Waiting for FCU connection/state...")
                     continue
 
@@ -673,29 +669,43 @@ class Controller(Node):
                         if tookoff:
                             self.get_logger().info(f"[{drone}] Takeoff command accepted, waiting for altitude increase")
                             
-                            # Wait for actual altitude change (up to 10 seconds)
+                            # Wait for actual altitude change (up to 15 seconds)
                             start = time.time()
                             initial_z = None
                             takeoff_successful = False
-                            
-                            while time.time() - start < 10.0:
+                            target_altitude_reached = False
+                            current_x, current_y, current_z = 0.0, 0.0, 0.0
+
+                            while time.time() - start < 15.0:
                                 pose = s.get('pose')
                                 if pose is not None:
+                                    current_x = pose.pose.position.x
+                                    current_y = pose.pose.position.y
                                     current_z = getattr(pose.pose.position, 'z', 0.0)
                                     if initial_z is None:
                                         initial_z = current_z
-                                        self.get_logger().info(f"[{drone}] Initial altitude: {initial_z:.2f} m")
-                                    elif current_z > initial_z + 0.5:  # Require 0.5m increase
+                                        self.get_logger().info(f"[{drone}] Initial altitude: {initial_z:.2f} m, target: {z:.2f} m")
+                                    if current_z > initial_z + 0.3 and not takeoff_successful:
                                         takeoff_successful = True
-                                        self.get_logger().info(f"[{drone}] Takeoff verified - altitude increased to {current_z:.2f} m")
+                                        self.get_logger().info(f"[{drone}] Climb detected at altitude {current_z:.2f} m")
+                                    if current_z > z - 0.5:
+                                        target_altitude_reached = True
+                                        self.get_logger().info(f"[{drone}] Target altitude reached: {current_z:.2f} m")
                                         break
+
+                                if takeoff_successful:
+                                    self.send_position(drone, current_x, current_y, float(z))
+
                                 time.sleep(0.2)
                             
-                            if takeoff_successful:
+                            if target_altitude_reached or (takeoff_successful and time.time() - start > 5.0):
+                                s['ready_to_arm'] = False
                                 s['current_state'] = DroneState.CIRCLE if drone in self.circle_waypoints else DroneState.WAYPOINT
                                 self.get_logger().info(f"[{drone}] Takeoff complete, starting movement to waypoint")
                             else:
-                                self.get_logger().error(f"[{drone}] Takeoff failed - no altitude increase detected")
+                                self.get_logger().error(f"[{drone}] Takeoff failed - drone did not climb properly")
+                                s['ready_to_arm'] = False
+                                s['current_state'] = DroneState.LAND
                         else:
                             self.get_logger().error(f"[{drone}] Takeoff command failed")
                     else:
@@ -704,7 +714,8 @@ class Controller(Node):
                 # Move to waypoint
                 elif s['current_state'] == DroneState.HOVER:
                     if drone in self.target_waypoints:
-                        x, y, z = self.target_waypoints[drone]
+                        wp = self.target_waypoints[drone]
+                        x, y, z = wp[0], wp[1], wp[2]
                         s['current_state'] = DroneState.WAYPOINT  # Switch to WAYPOINT state for movement
                         self.get_logger().info(f"[{drone}] Starting movement to waypoint ({x}, {y}, {z})")
                         # Ensure we're in GUIDED mode for waypoint navigation
@@ -714,16 +725,12 @@ class Controller(Node):
                 # Handle waypoint movement
                 elif s['current_state'] == DroneState.WAYPOINT:
                     if drone in self.target_waypoints:
-                        x, y, z = self.target_waypoints[drone]
+                        wp = self.target_waypoints[drone]
+                        x, y, z = wp[0], wp[1], wp[2]
                         
-                        # Verify we're in a flight mode (GUIDED or GUIDED_NOGPS)
-                        current_mode = None
-                        if s.get('state') is not None:
-                            current_mode = getattr(s['state'], 'mode', '')
-                        if current_mode is None or ('GUIDED' not in str(current_mode).upper()):
-                            if not self.set_mode(drone, "GUIDED"):
-                                self.get_logger().error(f"[{drone}] Lost flight mode, retrying...")
-                                continue
+                        if not self._in_guided_mode(drone, s):
+                            self.get_logger().error(f"[{drone}] Lost flight mode, retrying...")
+                            continue
 
                         # Get current position
                         pose = s.get('pose')
@@ -749,8 +756,13 @@ class Controller(Node):
                                 self.display_command_options()
                             else:
                                 # Send target position with heading toward waypoint
+                                # Ensure we maintain at least current altitude (don't descend unexpectedly)
+                                target_alt = z if z > 0 else current_z
+                                # If target altitude is lower than current but we're far from waypoint, maintain current altitude
+                                if target_alt < current_z - 0.5 and dist > 1.0:
+                                    target_alt = current_z
                                 target_heading = math.degrees(math.atan2(dy, dx))
-                                self.send_position(drone, x, y, z, yaw_deg=target_heading)
+                                self.send_position(drone, x, y, target_alt, yaw_deg=target_heading)
                     # maintain explicit heading if requested
                     elif s.get('target_heading') is not None:
                         try:
@@ -761,6 +773,10 @@ class Controller(Node):
                 # Handle circle flight
                 elif s['current_state'] == DroneState.CIRCLE:
                     if drone in self.circle_waypoints and self.circle_waypoints[drone]:
+                        if not self._in_guided_mode(drone, s):
+                            self.get_logger().error(f"[{drone}] Lost flight mode during circle, retrying...")
+                            continue
+                        
                         wp = self.circle_waypoints[drone][0]
                         is_gps = len(wp) == 4 and wp[3]  # Check if GPS waypoint
                         
@@ -787,6 +803,8 @@ class Controller(Node):
                                                           math.cos(math.radians(gps.latitude)) * math.sin(math.radians(lat)) -
                                                           math.sin(math.radians(gps.latitude)) * math.cos(math.radians(lat)) * math.cos(dlon))) + 90.0
                                     self.send_gps_waypoint(drone, lat, lon, alt, yaw_deg=heading)
+                            else:
+                                self.get_logger().warn(f"[{drone}] GPS data not available for circle flight")
                         else:
                             # Local mode
                             x, y, z = wp[0], wp[1], wp[2]
@@ -806,6 +824,9 @@ class Controller(Node):
                                     # For clockwise circle, negate heading and add 90° to face tangent
                                     target_heading = -math.degrees(math.atan2(y - current_y, x - current_x)) + 90.0
                                     self.send_position(drone, x, y, z, yaw_deg=target_heading)
+                    else:
+                        self.get_logger().warn(f"[{drone}] Circle waypoints not available, transitioning to land")
+                        s['current_state'] = DroneState.LAND
 
                 # Landing
                 elif s['current_state'] == DroneState.LAND:
@@ -849,14 +870,17 @@ class Controller(Node):
                                 s['ready_to_arm'] = False
                                 s['landing_attempts'] = 0
                                 s['landing_initiated'] = False
-                                s['last_mode_warn'] = 0.0
                                 s['target_heading'] = None
-                                s['emergency_landing'] = False  # Clear emergency flag
-                                # Clear any existing waypoint
+                                # Clear any existing waypoints
                                 if drone in self.target_waypoints:
                                     del self.target_waypoints[drone]
+                                if drone in self.circle_waypoints:
+                                    del self.circle_waypoints[drone]
                                 # Display commands again
                                 self.display_command_options()
+
+              except Exception as e:
+                self.get_logger().error(f"[{drone}] State machine exception: {e}", throttle_duration_sec=1.0)
 
             time.sleep(1.0 / rate)
 

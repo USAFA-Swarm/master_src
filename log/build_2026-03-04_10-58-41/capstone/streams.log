@@ -1,0 +1,37 @@
+[1.527s] Invoking command in '/home/dfec/master_src/build/capstone': PYTHONPATH=/home/dfec/master_src/build/capstone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/dfec/master_src/install/capstone/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --uninstall --editable --build-directory /home/dfec/master_src/build/capstone/build
+[1.874s] /home/dfec/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require'
+[1.875s]   warnings.warn(msg)
+[2.146s] running develop
+[2.603s] Invoked command in '/home/dfec/master_src/build/capstone' returned '0': PYTHONPATH=/home/dfec/master_src/build/capstone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/dfec/master_src/install/capstone/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --uninstall --editable --build-directory /home/dfec/master_src/build/capstone/build
+[2.606s] Invoking command in '/home/dfec/master_src/capstone': PYTHONPATH=/home/dfec/master_src/build/capstone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/dfec/master_src/install/capstone/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/capstone build --build-base /home/dfec/master_src/build/capstone/build install --record /home/dfec/master_src/build/capstone/install.log --single-version-externally-managed install_data --force
+[2.950s] /home/dfec/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require'
+[2.950s]   warnings.warn(msg)
+[3.120s] running egg_info
+[3.146s] writing ../build/capstone/capstone.egg-info/PKG-INFO
+[3.147s] writing dependency_links to ../build/capstone/capstone.egg-info/dependency_links.txt
+[3.147s] writing entry points to ../build/capstone/capstone.egg-info/entry_points.txt
+[3.148s] writing requirements to ../build/capstone/capstone.egg-info/requires.txt
+[3.148s] writing top-level names to ../build/capstone/capstone.egg-info/top_level.txt
+[3.206s] reading manifest file '../build/capstone/capstone.egg-info/SOURCES.txt'
+[3.207s] adding license file 'LICENSE'
+[3.209s] writing manifest file '../build/capstone/capstone.egg-info/SOURCES.txt'
+[3.209s] running build
+[3.209s] running build_py
+[3.210s] copying capstone/controller.py -> /home/dfec/master_src/build/capstone/build/lib/capstone
+[3.210s] copying capstone/__init__.py -> /home/dfec/master_src/build/capstone/build/lib/capstone
+[3.211s] running install
+[3.220s] running install_lib
+[3.248s] creating /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone
+[3.249s] copying /home/dfec/master_src/build/capstone/build/lib/capstone/controller.py -> /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone
+[3.249s] copying /home/dfec/master_src/build/capstone/build/lib/capstone/__init__.py -> /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone
+[3.250s] byte-compiling /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone/controller.py to controller.cpython-310.pyc
+[3.264s] byte-compiling /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone/__init__.py to __init__.cpython-310.pyc
+[3.264s] running install_data
+[3.265s] copying resource/capstone -> /home/dfec/master_src/install/capstone/share/ament_index/resource_index/packages
+[3.265s] copying package.xml -> /home/dfec/master_src/install/capstone/share/capstone
+[3.265s] running install_egg_info
+[3.296s] Copying ../build/capstone/capstone.egg-info to /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone-0.0.0-py3.10.egg-info
+[3.297s] running install_scripts
+[3.528s] Installing controller script to /home/dfec/master_src/install/capstone/lib/capstone
+[3.529s] writing list of installed files to '/home/dfec/master_src/build/capstone/install.log'
+[3.580s] Invoked command in '/home/dfec/master_src/capstone' returned '0': PYTHONPATH=/home/dfec/master_src/build/capstone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/dfec/master_src/install/capstone/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/capstone build --build-base /home/dfec/master_src/build/capstone/build install --record /home/dfec/master_src/build/capstone/install.log --single-version-externally-managed install_data --force

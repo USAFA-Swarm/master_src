@@ -1,0 +1,81 @@
+[0.000000] (-) TimerEvent: {}
+[0.001897] (-) JobUnselected: {'identifier': 'apriltag'}
+[0.002032] (-) JobUnselected: {'identifier': 'comms_interface'}
+[0.002093] (-) JobUnselected: {'identifier': 'drone_interface'}
+[0.002141] (-) JobUnselected: {'identifier': 'move2hover'}
+[0.002195] (capstone) JobQueued: {'identifier': 'capstone', 'dependencies': OrderedDict()}
+[0.002253] (capstone) JobStarted: {'identifier': 'capstone'}
+[0.099838] (-) TimerEvent: {}
+[0.200194] (-) TimerEvent: {}
+[0.300783] (-) TimerEvent: {}
+[0.401051] (-) TimerEvent: {}
+[0.501305] (-) TimerEvent: {}
+[0.601577] (-) TimerEvent: {}
+[0.701898] (-) TimerEvent: {}
+[0.802206] (-) TimerEvent: {}
+[0.902438] (-) TimerEvent: {}
+[1.002687] (-) TimerEvent: {}
+[1.102944] (-) TimerEvent: {}
+[1.203164] (-) TimerEvent: {}
+[1.303401] (-) TimerEvent: {}
+[1.403690] (-) TimerEvent: {}
+[1.504035] (-) TimerEvent: {}
+[1.527040] (capstone) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'develop', '--uninstall', '--editable', '--build-directory', '/home/dfec/master_src/build/capstone/build'], 'cwd': '/home/dfec/master_src/build/capstone', 'env': {'GJS_DEBUG_TOPICS': 'JS ERROR;JS LOG', 'LESSOPEN': '| /usr/bin/lesspipe %s', 'VSCODE_CWD': '/home/dfec', 'VSCODE_ESM_ENTRYPOINT': 'vs/workbench/api/node/extensionHostProcess', 'USER': 'dfec', 'CLAUDE_CODE_ENTRYPOINT': 'claude-vscode', 'VSCODE_NLS_CONFIG': '{"userLocale":"en-us","osLocale":"en-us","resolvedLanguage":"en","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","locale":"en-us","availableLanguages":{}}', 'GIT_EDITOR': 'true', 'VSCODE_HANDLES_UNCAUGHT_ERRORS': 'true', 'XDG_SESSION_TYPE': 'wayland', 'CLAUDE_AGENT_SDK_VERSION': '0.2.68', 'SHLVL': '0', 'LD_LIBRARY_PATH': '/home/dfec/ros2_ws/install/mavros_extras/lib:/home/dfec/ros2_ws/install/mavros/lib:/home/dfec/ros2_ws/install/mavros_msgs/lib:/home/dfec/ros2_ws/install/libmavconn/lib:/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib', 'HOME': '/home/dfec', 'CHROME_DESKTOP': 'code.desktop', 'DESKTOP_SESSION': 'ubuntu', 'VSCODE_IPC_HOOK': '/run/user/1000/vscode-0ca5b185-1.10-main.sock', 'GIO_LAUNCHED_DESKTOP_FILE': '/usr/share/applications/code.desktop', 'APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL': '1', 'ROS_PYTHON_VERSION': '3', 'GNOME_SHELL_SESSION_MODE': 'ubuntu', 'GTK_MODULES': 'gail:atk-bridge', 'MANAGERPID': '1459', 'SYSTEMD_EXEC_PID': '1635', 'IM_CONFIG_CHECK_ENV': '1', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'GIO_LAUNCHED_DESKTOP_FILE_PID': '2821', 'VSCODE_CRASH_REPORTER_PROCESS_TYPE': 'extensionHost', 'IM_CONFIG_PHASE': '1', 'WAYLAND_DISPLAY': 'wayland-0', 'VSCODE_L10N_BUNDLE_LOCATION': '', 'COLCON_PREFIX_PATH': '/home/dfec/ros2_ws/install', 'APPLICATION_INSIGHTS_NO_STATSBEAT': 'true', 'ROS_DISTRO': 'humble', 'LOGNAME': 'dfec', 'JOURNAL_STREAM': '8:13843', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'XDG_SESSION_CLASS': 'user', 'USERNAME': 'dfec', 'OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE': 'delta', 'GNOME_DESKTOP_SESSION_ID': 'this-is-deprecated', 'ROS_LOCALHOST_ONLY': '0', 'MCP_CONNECTION_NONBLOCKING': 'true', 'PATH': '/usr/bin:/usr/lib/ccache:/home/dfec/ardupilot/Tools/autotest:/opt/gcc-arm-none-eabi-10-2020-q4-major/bin:/home/dfec/.local/bin:/opt/ros/humble/bin:/usr/lib/ccache:/home/dfec/ardupilot/Tools/autotest:/opt/gcc-arm-none-eabi-10-2020-q4-major/bin:/home/dfec/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin', 'SESSION_MANAGER': 'local/rivendell:@/tmp/.ICE-unix/1609,unix/rivendell:/tmp/.ICE-unix/1609', 'INVOCATION_ID': '78b1f5efb4d44284bf7382282c4e3abe', 'COREPACK_ENABLE_AUTO_PIN': '0', 'XDG_MENU_PREFIX': 'gnome-', 'GNOME_SETUP_DISPLAY': ':1', 'XDG_RUNTIME_DIR': '/run/user/1000', 'GDK_BACKEND': 'x11', 'DISPLAY': ':0', 'NoDefaultCurrentDirectoryInExePath': '1', 'LANG': 'en_US.UTF-8', 'XDG_CURRENT_DESKTOP': 'Unity', 'XMODIFIERS': '@im=ibus', 'XDG_SESSION_DESKTOP': 'ubuntu', 'XAUTHORITY': '/run/user/1000/.mutter-Xwaylandauth.CB6IL3', 'SSH_AGENT_LAUNCHER': 'gnome-keyring', 'SSH_AUTH_SOCK': '/run/user/1000/keyring/ssh', 'ROS_DOMAIN_ID': '13', 'AMENT_PREFIX_PATH': '/home/dfec/ros2_ws/install/mavros_extras:/home/dfec/ros2_ws/install/mavros:/home/dfec/ros2_ws/install/mavros_msgs:/home/dfec/ros2_ws/install/libmavconn:/opt/ros/humble', 'ORIGINAL_XDG_CURRENT_DESKTOP': 'ubuntu:GNOME', 'SHELL': '/bin/bash', 'QT_ACCESSIBILITY': '1', 'ELECTRON_RUN_AS_NODE': '1', 'GDMSESSION': 'ubuntu', 'CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING': 'true', 'LESSCLOSE': '/usr/bin/lesspipe %s %s', 'CLAUDECODE': '1', 'GJS_DEBUG_OUTPUT': 'stderr', 'VIRTUAL_ENV': '/usr', 'QT_IM_MODULE': 'ibus', 'PWD': '/home/dfec/master_src/build/capstone', 'LC_ALL': 'en_US.UTF-8', 'XDG_CONFIG_DIRS': '/etc/xdg/xdg-ubuntu:/etc/xdg', 'VSCODE_CODE_CACHE_PATH': '/home/dfec/.config/Code/CachedData/7d842fb85a0275a4a8e4d7e040d2625abbf7f084', 'XDG_DATA_DIRS': '/usr/share/ubuntu:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop', 'PYTHONPATH': '/home/dfec/master_src/build/capstone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/dfec/master_src/install/capstone/lib/python3.10/site-packages:/home/dfec/ros2_ws/install/mavros/local/lib/python3.10/dist-packages:/home/dfec/ros2_ws/install/mavros_msgs/local/lib/python3.10/dist-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/home/dfec/ros2_ws/install/mavros_extras:/home/dfec/ros2_ws/install/mavros:/home/dfec/ros2_ws/install/mavros_msgs:/home/dfec/ros2_ws/install/libmavconn', 'VSCODE_PID': '2821'}, 'shell': False}
+[1.604161] (-) TimerEvent: {}
+[1.704409] (-) TimerEvent: {}
+[1.804671] (-) TimerEvent: {}
+[1.876302] (capstone) StderrLine: {'line': b"/home/dfec/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require'\n"}
+[1.876711] (capstone) StderrLine: {'line': b'  warnings.warn(msg)\n'}
+[1.904823] (-) TimerEvent: {}
+[2.005081] (-) TimerEvent: {}
+[2.105316] (-) TimerEvent: {}
+[2.147680] (capstone) StdoutLine: {'line': b'running develop\n'}
+[2.205538] (-) TimerEvent: {}
+[2.305761] (-) TimerEvent: {}
+[2.405971] (-) TimerEvent: {}
+[2.506262] (-) TimerEvent: {}
+[2.604390] (capstone) CommandEnded: {'returncode': 0}
+[2.606727] (-) TimerEvent: {}
+[2.606851] (capstone) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'egg_info', '--egg-base', '../build/capstone', 'build', '--build-base', '/home/dfec/master_src/build/capstone/build', 'install', '--record', '/home/dfec/master_src/build/capstone/install.log', '--single-version-externally-managed', 'install_data', '--force'], 'cwd': '/home/dfec/master_src/capstone', 'env': {'GJS_DEBUG_TOPICS': 'JS ERROR;JS LOG', 'LESSOPEN': '| /usr/bin/lesspipe %s', 'VSCODE_CWD': '/home/dfec', 'VSCODE_ESM_ENTRYPOINT': 'vs/workbench/api/node/extensionHostProcess', 'USER': 'dfec', 'CLAUDE_CODE_ENTRYPOINT': 'claude-vscode', 'VSCODE_NLS_CONFIG': '{"userLocale":"en-us","osLocale":"en-us","resolvedLanguage":"en","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","locale":"en-us","availableLanguages":{}}', 'GIT_EDITOR': 'true', 'VSCODE_HANDLES_UNCAUGHT_ERRORS': 'true', 'XDG_SESSION_TYPE': 'wayland', 'CLAUDE_AGENT_SDK_VERSION': '0.2.68', 'SHLVL': '0', 'LD_LIBRARY_PATH': '/home/dfec/ros2_ws/install/mavros_extras/lib:/home/dfec/ros2_ws/install/mavros/lib:/home/dfec/ros2_ws/install/mavros_msgs/lib:/home/dfec/ros2_ws/install/libmavconn/lib:/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib', 'HOME': '/home/dfec', 'CHROME_DESKTOP': 'code.desktop', 'DESKTOP_SESSION': 'ubuntu', 'VSCODE_IPC_HOOK': '/run/user/1000/vscode-0ca5b185-1.10-main.sock', 'GIO_LAUNCHED_DESKTOP_FILE': '/usr/share/applications/code.desktop', 'APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL': '1', 'ROS_PYTHON_VERSION': '3', 'GNOME_SHELL_SESSION_MODE': 'ubuntu', 'GTK_MODULES': 'gail:atk-bridge', 'MANAGERPID': '1459', 'SYSTEMD_EXEC_PID': '1635', 'IM_CONFIG_CHECK_ENV': '1', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'GIO_LAUNCHED_DESKTOP_FILE_PID': '2821', 'VSCODE_CRASH_REPORTER_PROCESS_TYPE': 'extensionHost', 'IM_CONFIG_PHASE': '1', 'WAYLAND_DISPLAY': 'wayland-0', 'VSCODE_L10N_BUNDLE_LOCATION': '', 'COLCON_PREFIX_PATH': '/home/dfec/ros2_ws/install', 'APPLICATION_INSIGHTS_NO_STATSBEAT': 'true', 'ROS_DISTRO': 'humble', 'LOGNAME': 'dfec', 'JOURNAL_STREAM': '8:13843', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'XDG_SESSION_CLASS': 'user', 'USERNAME': 'dfec', 'OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE': 'delta', 'GNOME_DESKTOP_SESSION_ID': 'this-is-deprecated', 'ROS_LOCALHOST_ONLY': '0', 'MCP_CONNECTION_NONBLOCKING': 'true', 'PATH': '/usr/bin:/usr/lib/ccache:/home/dfec/ardupilot/Tools/autotest:/opt/gcc-arm-none-eabi-10-2020-q4-major/bin:/home/dfec/.local/bin:/opt/ros/humble/bin:/usr/lib/ccache:/home/dfec/ardupilot/Tools/autotest:/opt/gcc-arm-none-eabi-10-2020-q4-major/bin:/home/dfec/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin', 'SESSION_MANAGER': 'local/rivendell:@/tmp/.ICE-unix/1609,unix/rivendell:/tmp/.ICE-unix/1609', 'INVOCATION_ID': '78b1f5efb4d44284bf7382282c4e3abe', 'COREPACK_ENABLE_AUTO_PIN': '0', 'XDG_MENU_PREFIX': 'gnome-', 'GNOME_SETUP_DISPLAY': ':1', 'XDG_RUNTIME_DIR': '/run/user/1000', 'GDK_BACKEND': 'x11', 'DISPLAY': ':0', 'NoDefaultCurrentDirectoryInExePath': '1', 'LANG': 'en_US.UTF-8', 'XDG_CURRENT_DESKTOP': 'Unity', 'XMODIFIERS': '@im=ibus', 'XDG_SESSION_DESKTOP': 'ubuntu', 'XAUTHORITY': '/run/user/1000/.mutter-Xwaylandauth.CB6IL3', 'SSH_AGENT_LAUNCHER': 'gnome-keyring', 'SSH_AUTH_SOCK': '/run/user/1000/keyring/ssh', 'ROS_DOMAIN_ID': '13', 'AMENT_PREFIX_PATH': '/home/dfec/ros2_ws/install/mavros_extras:/home/dfec/ros2_ws/install/mavros:/home/dfec/ros2_ws/install/mavros_msgs:/home/dfec/ros2_ws/install/libmavconn:/opt/ros/humble', 'ORIGINAL_XDG_CURRENT_DESKTOP': 'ubuntu:GNOME', 'SHELL': '/bin/bash', 'QT_ACCESSIBILITY': '1', 'ELECTRON_RUN_AS_NODE': '1', 'GDMSESSION': 'ubuntu', 'CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING': 'true', 'LESSCLOSE': '/usr/bin/lesspipe %s %s', 'CLAUDECODE': '1', 'GJS_DEBUG_OUTPUT': 'stderr', 'VIRTUAL_ENV': '/usr', 'QT_IM_MODULE': 'ibus', 'PWD': '/home/dfec/master_src/build/capstone', 'LC_ALL': 'en_US.UTF-8', 'XDG_CONFIG_DIRS': '/etc/xdg/xdg-ubuntu:/etc/xdg', 'VSCODE_CODE_CACHE_PATH': '/home/dfec/.config/Code/CachedData/7d842fb85a0275a4a8e4d7e040d2625abbf7f084', 'XDG_DATA_DIRS': '/usr/share/ubuntu:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop', 'PYTHONPATH': '/home/dfec/master_src/build/capstone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/dfec/master_src/install/capstone/lib/python3.10/site-packages:/home/dfec/ros2_ws/install/mavros/local/lib/python3.10/dist-packages:/home/dfec/ros2_ws/install/mavros_msgs/local/lib/python3.10/dist-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/home/dfec/ros2_ws/install/mavros_extras:/home/dfec/ros2_ws/install/mavros:/home/dfec/ros2_ws/install/mavros_msgs:/home/dfec/ros2_ws/install/libmavconn', 'VSCODE_PID': '2821'}, 'shell': False}
+[2.706898] (-) TimerEvent: {}
+[2.807187] (-) TimerEvent: {}
+[2.907527] (-) TimerEvent: {}
+[2.951943] (capstone) StderrLine: {'line': b"/home/dfec/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require'\n"}
+[2.952286] (capstone) StderrLine: {'line': b'  warnings.warn(msg)\n'}
+[3.007755] (-) TimerEvent: {}
+[3.108018] (-) TimerEvent: {}
+[3.122075] (capstone) StdoutLine: {'line': b'running egg_info\n'}
+[3.148347] (capstone) StdoutLine: {'line': b'writing ../build/capstone/capstone.egg-info/PKG-INFO\n'}
+[3.149107] (capstone) StdoutLine: {'line': b'writing dependency_links to ../build/capstone/capstone.egg-info/dependency_links.txt\n'}
+[3.149524] (capstone) StdoutLine: {'line': b'writing entry points to ../build/capstone/capstone.egg-info/entry_points.txt\n'}
+[3.150083] (capstone) StdoutLine: {'line': b'writing requirements to ../build/capstone/capstone.egg-info/requires.txt\n'}
+[3.150269] (capstone) StdoutLine: {'line': b'writing top-level names to ../build/capstone/capstone.egg-info/top_level.txt\n'}
+[3.207806] (capstone) StdoutLine: {'line': b"reading manifest file '../build/capstone/capstone.egg-info/SOURCES.txt'\n"}
+[3.208164] (-) TimerEvent: {}
+[3.208816] (capstone) StdoutLine: {'line': b"adding license file 'LICENSE'\n"}
+[3.210803] (capstone) StdoutLine: {'line': b"writing manifest file '../build/capstone/capstone.egg-info/SOURCES.txt'\n"}
+[3.211327] (capstone) StdoutLine: {'line': b'running build\n'}
+[3.211499] (capstone) StdoutLine: {'line': b'running build_py\n'}
+[3.211818] (capstone) StdoutLine: {'line': b'copying capstone/controller.py -> /home/dfec/master_src/build/capstone/build/lib/capstone\n'}
+[3.212313] (capstone) StdoutLine: {'line': b'copying capstone/__init__.py -> /home/dfec/master_src/build/capstone/build/lib/capstone\n'}
+[3.212873] (capstone) StdoutLine: {'line': b'running install\n'}
+[3.222020] (capstone) StdoutLine: {'line': b'running install_lib\n'}
+[3.250274] (capstone) StdoutLine: {'line': b'creating /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone\n'}
+[3.250697] (capstone) StdoutLine: {'line': b'copying /home/dfec/master_src/build/capstone/build/lib/capstone/controller.py -> /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone\n'}
+[3.250986] (capstone) StdoutLine: {'line': b'copying /home/dfec/master_src/build/capstone/build/lib/capstone/__init__.py -> /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone\n'}
+[3.252198] (capstone) StdoutLine: {'line': b'byte-compiling /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone/controller.py to controller.cpython-310.pyc\n'}
+[3.266010] (capstone) StdoutLine: {'line': b'byte-compiling /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone/__init__.py to __init__.cpython-310.pyc\n'}
+[3.266396] (capstone) StdoutLine: {'line': b'running install_data\n'}
+[3.266743] (capstone) StdoutLine: {'line': b'copying resource/capstone -> /home/dfec/master_src/install/capstone/share/ament_index/resource_index/packages\n'}
+[3.267322] (capstone) StdoutLine: {'line': b'copying package.xml -> /home/dfec/master_src/install/capstone/share/capstone\n'}
+[3.267586] (capstone) StdoutLine: {'line': b'running install_egg_info\n'}
+[3.298018] (capstone) StdoutLine: {'line': b'Copying ../build/capstone/capstone.egg-info to /home/dfec/master_src/install/capstone/lib/python3.10/site-packages/capstone-0.0.0-py3.10.egg-info\n'}
+[3.299439] (capstone) StdoutLine: {'line': b'running install_scripts\n'}
+[3.308302] (-) TimerEvent: {}
+[3.408594] (-) TimerEvent: {}
+[3.508906] (-) TimerEvent: {}
+[3.530539] (capstone) StdoutLine: {'line': b'Installing controller script to /home/dfec/master_src/install/capstone/lib/capstone\n'}
+[3.531181] (capstone) StdoutLine: {'line': b"writing list of installed files to '/home/dfec/master_src/build/capstone/install.log'\n"}
+[3.581500] (capstone) CommandEnded: {'returncode': 0}
+[3.606798] (capstone) JobEnded: {'identifier': 'capstone', 'rc': 0}
+[3.607832] (-) EventReactorShutdown: {}

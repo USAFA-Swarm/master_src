@@ -1,0 +1,187 @@
+[0.226s] DEBUG:colcon:Command line arguments: ['/usr/bin/colcon', 'build', '--packages-select', 'capstone']
+[0.226s] DEBUG:colcon:Parsed command line arguments: Namespace(log_base=None, log_level=None, verb_name='build', build_base='build', install_base='install', merge_install=False, symlink_install=False, test_result_base=None, continue_on_error=False, executor='parallel', parallel_workers=8, event_handlers=None, ignore_user_meta=False, metas=['./colcon.meta'], base_paths=['.'], packages_ignore=None, packages_ignore_regex=None, paths=None, packages_up_to=None, packages_up_to_regex=None, packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_select_by_dep=None, packages_skip_by_dep=None, packages_skip_up_to=None, packages_select_build_failed=False, packages_skip_build_finished=False, packages_select_test_failures=False, packages_skip_test_passed=False, packages_select=['capstone'], packages_skip=None, packages_select_regex=None, packages_skip_regex=None, packages_start=None, packages_end=None, allow_overriding=[], cmake_args=None, cmake_target=None, cmake_target_skip_unavailable=False, cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, ament_cmake_args=None, catkin_cmake_args=None, catkin_skip_building_tests=False, mixin_files=None, mixin=None, verb_parser=<colcon_mixin.mixin.mixin_argument.MixinArgumentDecorator object at 0x7a320adc6b60>, verb_extension=<colcon_core.verb.build.BuildVerb object at 0x7a320adc5cf0>, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0x7a320adc5cf0>>, mixin_verb=('build',))
+[0.308s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[0.308s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[0.308s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[0.308s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[0.308s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) discover
+[0.308s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[0.308s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/home/dfec/master_src'
+[0.308s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ignore', 'ignore_ament_install']
+[0.309s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore'
+[0.309s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore_ament_install'
+[0.309s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_pkg']
+[0.309s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_pkg'
+[0.309s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_meta']
+[0.309s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_meta'
+[0.309s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ros']
+[0.309s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ros'
+[0.341s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['cmake', 'python']
+[0.342s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'cmake'
+[0.342s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python'
+[0.342s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['python_setup_py']
+[0.342s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python_setup_py'
+[0.342s] Level 1:colcon.colcon_core.package_identification:_identify(apriltag) by extensions ['ignore', 'ignore_ament_install']
+[0.342s] Level 1:colcon.colcon_core.package_identification:_identify(apriltag) by extension 'ignore'
+[0.342s] Level 1:colcon.colcon_core.package_identification:_identify(apriltag) by extension 'ignore_ament_install'
+[0.342s] Level 1:colcon.colcon_core.package_identification:_identify(apriltag) by extensions ['colcon_pkg']
+[0.343s] Level 1:colcon.colcon_core.package_identification:_identify(apriltag) by extension 'colcon_pkg'
+[0.343s] Level 1:colcon.colcon_core.package_identification:_identify(apriltag) by extensions ['colcon_meta']
+[0.343s] Level 1:colcon.colcon_core.package_identification:_identify(apriltag) by extension 'colcon_meta'
+[0.343s] Level 1:colcon.colcon_core.package_identification:_identify(apriltag) by extensions ['ros']
+[0.343s] Level 1:colcon.colcon_core.package_identification:_identify(apriltag) by extension 'ros'
+[0.348s] DEBUG:colcon.colcon_core.package_identification:Package 'apriltag' with type 'ros.ament_python' and name 'apriltag'
+[0.348s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extensions ['ignore', 'ignore_ament_install']
+[0.349s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extension 'ignore'
+[0.349s] Level 1:colcon.colcon_core.package_identification:_identify(build) ignored
+[0.349s] Level 1:colcon.colcon_core.package_identification:_identify(capstone) by extensions ['ignore', 'ignore_ament_install']
+[0.349s] Level 1:colcon.colcon_core.package_identification:_identify(capstone) by extension 'ignore'
+[0.350s] Level 1:colcon.colcon_core.package_identification:_identify(capstone) by extension 'ignore_ament_install'
+[0.350s] Level 1:colcon.colcon_core.package_identification:_identify(capstone) by extensions ['colcon_pkg']
+[0.350s] Level 1:colcon.colcon_core.package_identification:_identify(capstone) by extension 'colcon_pkg'
+[0.350s] Level 1:colcon.colcon_core.package_identification:_identify(capstone) by extensions ['colcon_meta']
+[0.350s] Level 1:colcon.colcon_core.package_identification:_identify(capstone) by extension 'colcon_meta'
+[0.350s] Level 1:colcon.colcon_core.package_identification:_identify(capstone) by extensions ['ros']
+[0.350s] Level 1:colcon.colcon_core.package_identification:_identify(capstone) by extension 'ros'
+[0.351s] DEBUG:colcon.colcon_core.package_identification:Failed to parse potential ROS package manifest in'capstone': Error(s) in package 'capstone/package.xml':
+The manifest contains invalid XML:
+no element found: line 1, column 0
+[0.351s] Level 1:colcon.colcon_core.package_identification:_identify(capstone) by extensions ['cmake', 'python']
+[0.351s] Level 1:colcon.colcon_core.package_identification:_identify(capstone) by extension 'cmake'
+[0.351s] Level 1:colcon.colcon_core.package_identification:_identify(capstone) by extension 'python'
+[0.351s] DEBUG:colcon.colcon_core.package_identification:Python package in 'capstone' passes arguments to the setup() function which requires a different identification extension than 'python'
+[0.351s] Level 1:colcon.colcon_core.package_identification:_identify(capstone) by extensions ['python_setup_py']
+[0.352s] Level 1:colcon.colcon_core.package_identification:_identify(capstone) by extension 'python_setup_py'
+[0.769s] DEBUG:colcon.colcon_core.package_identification:Package 'capstone' with type 'python' and name 'capstone'
+[0.769s] Level 1:colcon.colcon_core.package_identification:_identify(comms_interface) by extensions ['ignore', 'ignore_ament_install']
+[0.769s] Level 1:colcon.colcon_core.package_identification:_identify(comms_interface) by extension 'ignore'
+[0.770s] Level 1:colcon.colcon_core.package_identification:_identify(comms_interface) by extension 'ignore_ament_install'
+[0.770s] Level 1:colcon.colcon_core.package_identification:_identify(comms_interface) by extensions ['colcon_pkg']
+[0.770s] Level 1:colcon.colcon_core.package_identification:_identify(comms_interface) by extension 'colcon_pkg'
+[0.770s] Level 1:colcon.colcon_core.package_identification:_identify(comms_interface) by extensions ['colcon_meta']
+[0.770s] Level 1:colcon.colcon_core.package_identification:_identify(comms_interface) by extension 'colcon_meta'
+[0.770s] Level 1:colcon.colcon_core.package_identification:_identify(comms_interface) by extensions ['ros']
+[0.770s] Level 1:colcon.colcon_core.package_identification:_identify(comms_interface) by extension 'ros'
+[0.770s] DEBUG:colcon.colcon_core.package_identification:Failed to parse potential ROS package manifest in'comms_interface': Error(s) in package 'comms_interface/package.xml':
+The manifest contains invalid XML:
+no element found: line 1, column 0
+[0.771s] Level 1:colcon.colcon_core.package_identification:_identify(comms_interface) by extensions ['cmake', 'python']
+[0.771s] Level 1:colcon.colcon_core.package_identification:_identify(comms_interface) by extension 'cmake'
+[0.771s] Level 1:colcon.colcon_core.package_identification:_identify(comms_interface) by extension 'python'
+[0.771s] DEBUG:colcon.colcon_core.package_identification:Python package in 'comms_interface' passes arguments to the setup() function which requires a different identification extension than 'python'
+[0.771s] Level 1:colcon.colcon_core.package_identification:_identify(comms_interface) by extensions ['python_setup_py']
+[0.771s] Level 1:colcon.colcon_core.package_identification:_identify(comms_interface) by extension 'python_setup_py'
+[1.271s] DEBUG:colcon.colcon_core.package_identification:Package 'comms_interface' with type 'python' and name 'comms_interface'
+[1.271s] Level 1:colcon.colcon_core.package_identification:_identify(drone_interface) by extensions ['ignore', 'ignore_ament_install']
+[1.272s] Level 1:colcon.colcon_core.package_identification:_identify(drone_interface) by extension 'ignore'
+[1.272s] Level 1:colcon.colcon_core.package_identification:_identify(drone_interface) by extension 'ignore_ament_install'
+[1.272s] Level 1:colcon.colcon_core.package_identification:_identify(drone_interface) by extensions ['colcon_pkg']
+[1.272s] Level 1:colcon.colcon_core.package_identification:_identify(drone_interface) by extension 'colcon_pkg'
+[1.272s] Level 1:colcon.colcon_core.package_identification:_identify(drone_interface) by extensions ['colcon_meta']
+[1.272s] Level 1:colcon.colcon_core.package_identification:_identify(drone_interface) by extension 'colcon_meta'
+[1.272s] Level 1:colcon.colcon_core.package_identification:_identify(drone_interface) by extensions ['ros']
+[1.272s] Level 1:colcon.colcon_core.package_identification:_identify(drone_interface) by extension 'ros'
+[1.273s] DEBUG:colcon.colcon_core.package_identification:Failed to parse potential ROS package manifest in'drone_interface': Error(s) in package 'drone_interface/package.xml':
+The manifest contains invalid XML:
+no element found: line 1, column 0
+[1.273s] Level 1:colcon.colcon_core.package_identification:_identify(drone_interface) by extensions ['cmake', 'python']
+[1.273s] Level 1:colcon.colcon_core.package_identification:_identify(drone_interface) by extension 'cmake'
+[1.273s] Level 1:colcon.colcon_core.package_identification:_identify(drone_interface) by extension 'python'
+[1.273s] Level 1:colcon.colcon_core.package_identification:_identify(drone_interface) by extensions ['python_setup_py']
+[1.273s] Level 1:colcon.colcon_core.package_identification:_identify(drone_interface) by extension 'python_setup_py'
+[1.810s] DEBUG:colcon.colcon_core.package_identification:Package 'drone_interface' with type 'python' and name 'drone_interface'
+[1.811s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extensions ['ignore', 'ignore_ament_install']
+[1.811s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extension 'ignore'
+[1.811s] Level 1:colcon.colcon_core.package_identification:_identify(install) ignored
+[1.811s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extensions ['ignore', 'ignore_ament_install']
+[1.812s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extension 'ignore'
+[1.812s] Level 1:colcon.colcon_core.package_identification:_identify(log) ignored
+[1.812s] Level 1:colcon.colcon_core.package_identification:_identify(move2hover) by extensions ['ignore', 'ignore_ament_install']
+[1.813s] Level 1:colcon.colcon_core.package_identification:_identify(move2hover) by extension 'ignore'
+[1.813s] Level 1:colcon.colcon_core.package_identification:_identify(move2hover) by extension 'ignore_ament_install'
+[1.813s] Level 1:colcon.colcon_core.package_identification:_identify(move2hover) by extensions ['colcon_pkg']
+[1.813s] Level 1:colcon.colcon_core.package_identification:_identify(move2hover) by extension 'colcon_pkg'
+[1.813s] Level 1:colcon.colcon_core.package_identification:_identify(move2hover) by extensions ['colcon_meta']
+[1.813s] Level 1:colcon.colcon_core.package_identification:_identify(move2hover) by extension 'colcon_meta'
+[1.814s] Level 1:colcon.colcon_core.package_identification:_identify(move2hover) by extensions ['ros']
+[1.814s] Level 1:colcon.colcon_core.package_identification:_identify(move2hover) by extension 'ros'
+[1.815s] DEBUG:colcon.colcon_core.package_identification:Failed to parse potential ROS package manifest in'move2hover': Error(s) in package 'move2hover/package.xml':
+The manifest contains invalid XML:
+no element found: line 1, column 0
+[1.815s] Level 1:colcon.colcon_core.package_identification:_identify(move2hover) by extensions ['cmake', 'python']
+[1.815s] Level 1:colcon.colcon_core.package_identification:_identify(move2hover) by extension 'cmake'
+[1.815s] Level 1:colcon.colcon_core.package_identification:_identify(move2hover) by extension 'python'
+[1.815s] DEBUG:colcon.colcon_core.package_identification:Python package in 'move2hover' passes arguments to the setup() function which requires a different identification extension than 'python'
+[1.815s] Level 1:colcon.colcon_core.package_identification:_identify(move2hover) by extensions ['python_setup_py']
+[1.816s] Level 1:colcon.colcon_core.package_identification:_identify(move2hover) by extension 'python_setup_py'
+[2.430s] DEBUG:colcon.colcon_core.package_identification:Package 'move2hover' with type 'python' and name 'move2hover'
+[2.430s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults
+[2.430s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) discover
+[2.431s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) using defaults
+[2.431s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) discover
+[2.431s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) using defaults
+[2.495s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'apriltag' in 'apriltag'
+[2.496s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'comms_interface' in 'comms_interface'
+[2.496s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'drone_interface' in 'drone_interface'
+[2.496s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'move2hover' in 'move2hover'
+[2.498s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) check parameters
+[2.498s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) discover
+[2.504s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 4 installed packages in /home/dfec/ros2_ws/install
+[2.509s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 286 installed packages in /opt/ros/humble
+[2.515s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) using defaults
+[2.646s] Level 5:colcon.colcon_core.verb:set package 'capstone' build argument 'cmake_args' from command line to 'None'
+[2.646s] Level 5:colcon.colcon_core.verb:set package 'capstone' build argument 'cmake_target' from command line to 'None'
+[2.646s] Level 5:colcon.colcon_core.verb:set package 'capstone' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[2.646s] Level 5:colcon.colcon_core.verb:set package 'capstone' build argument 'cmake_clean_cache' from command line to 'False'
+[2.646s] Level 5:colcon.colcon_core.verb:set package 'capstone' build argument 'cmake_clean_first' from command line to 'False'
+[2.646s] Level 5:colcon.colcon_core.verb:set package 'capstone' build argument 'cmake_force_configure' from command line to 'False'
+[2.646s] Level 5:colcon.colcon_core.verb:set package 'capstone' build argument 'ament_cmake_args' from command line to 'None'
+[2.646s] Level 5:colcon.colcon_core.verb:set package 'capstone' build argument 'catkin_cmake_args' from command line to 'None'
+[2.646s] Level 5:colcon.colcon_core.verb:set package 'capstone' build argument 'catkin_skip_building_tests' from command line to 'False'
+[2.647s] DEBUG:colcon.colcon_core.verb:Building package 'capstone' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/dfec/master_src/build/capstone', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/dfec/master_src/install/capstone', 'merge_install': False, 'path': '/home/dfec/master_src/capstone', 'symlink_install': False, 'test_result_base': None}
+[2.647s] INFO:colcon.colcon_core.executor:Executing jobs using 'parallel' executor
+[2.651s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete
+[2.651s] INFO:colcon.colcon_core.task.python.build:Building Python package in '/home/dfec/master_src/capstone'
+[2.658s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[2.658s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[2.658s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[4.179s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/dfec/master_src/build/capstone': PYTHONPATH=/home/dfec/master_src/build/capstone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/dfec/master_src/install/capstone/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --uninstall --editable --build-directory /home/dfec/master_src/build/capstone/build
+[5.255s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/dfec/master_src/build/capstone' returned '0': PYTHONPATH=/home/dfec/master_src/build/capstone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/dfec/master_src/install/capstone/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --uninstall --editable --build-directory /home/dfec/master_src/build/capstone/build
+[5.259s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/dfec/master_src/capstone': PYTHONPATH=/home/dfec/master_src/build/capstone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/dfec/master_src/install/capstone/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/capstone build --build-base /home/dfec/master_src/build/capstone/build install --record /home/dfec/master_src/build/capstone/install.log --single-version-externally-managed install_data --force
+[6.232s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/dfec/master_src/capstone' returned '0': PYTHONPATH=/home/dfec/master_src/build/capstone/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/dfec/master_src/install/capstone/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/capstone build --build-base /home/dfec/master_src/build/capstone/build install --record /home/dfec/master_src/build/capstone/install.log --single-version-externally-managed install_data --force
+[6.238s] Level 1:colcon.colcon_core.environment:checking '/home/dfec/master_src/install/capstone' for CMake module files
+[6.240s] Level 1:colcon.colcon_core.environment:checking '/home/dfec/master_src/install/capstone' for CMake config files
+[6.241s] Level 1:colcon.colcon_core.environment:checking '/home/dfec/master_src/install/capstone/lib'
+[6.241s] Level 1:colcon.colcon_core.environment:checking '/home/dfec/master_src/install/capstone/bin'
+[6.242s] Level 1:colcon.colcon_core.environment:checking '/home/dfec/master_src/install/capstone/lib/pkgconfig/capstone.pc'
+[6.242s] Level 1:colcon.colcon_core.environment:checking '/home/dfec/master_src/install/capstone/lib/python3.10/site-packages'
+[6.242s] Level 1:colcon.colcon_core.shell:create_environment_hook('capstone', 'pythonpath')
+[6.243s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/dfec/master_src/install/capstone/share/capstone/hook/pythonpath.ps1'
+[6.245s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/dfec/master_src/install/capstone/share/capstone/hook/pythonpath.dsv'
+[6.246s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/dfec/master_src/install/capstone/share/capstone/hook/pythonpath.sh'
+[6.248s] Level 1:colcon.colcon_core.environment:checking '/home/dfec/master_src/install/capstone/bin'
+[6.248s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(capstone)
+[6.248s] INFO:colcon.colcon_core.shell:Creating package script '/home/dfec/master_src/install/capstone/share/capstone/package.ps1'
+[6.250s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/dfec/master_src/install/capstone/share/capstone/package.dsv'
+[6.251s] INFO:colcon.colcon_core.shell:Creating package script '/home/dfec/master_src/install/capstone/share/capstone/package.sh'
+[6.253s] INFO:colcon.colcon_core.shell:Creating package script '/home/dfec/master_src/install/capstone/share/capstone/package.bash'
+[6.254s] INFO:colcon.colcon_core.shell:Creating package script '/home/dfec/master_src/install/capstone/share/capstone/package.zsh'
+[6.256s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/dfec/master_src/install/capstone/share/colcon-core/packages/capstone)
+[6.256s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:closing loop
+[6.257s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:loop closed
+[6.257s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete finished with '0'
+[6.257s] DEBUG:colcon.colcon_core.event_reactor:joining thread
+[6.266s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.terminal_notifier': Not used on non-Darwin systems
+[6.266s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.win32': Not used on non-Windows systems
+[6.266s] INFO:colcon.colcon_notification.desktop_notification:Sending desktop notification using 'notify2'
+[6.282s] DEBUG:colcon.colcon_core.event_reactor:joined thread
+[6.283s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/dfec/master_src/install/local_setup.ps1'
+[6.285s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/dfec/master_src/install/_local_setup_util_ps1.py'
+[6.287s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/dfec/master_src/install/setup.ps1'
+[6.289s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/dfec/master_src/install/local_setup.sh'
+[6.290s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/dfec/master_src/install/_local_setup_util_sh.py'
+[6.291s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/dfec/master_src/install/setup.sh'
+[6.293s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/dfec/master_src/install/local_setup.bash'
+[6.294s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/dfec/master_src/install/setup.bash'
+[6.296s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/dfec/master_src/install/local_setup.zsh'
+[6.297s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/dfec/master_src/install/setup.zsh'
