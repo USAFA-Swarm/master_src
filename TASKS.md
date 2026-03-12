@@ -230,6 +230,7 @@ If starting fresh on the AprilTag landing feature, the minimum path is:
 - `eeprom.bin` — deleted; ArduPilot EEPROM runtime dump, not source code, should not be in version control
 - `mav.tlog` — deleted; MAVLink telemetry runtime log, not source code, should not be in version control
 - `mav.tlog.raw` — deleted; MAVLink telemetry runtime log (raw), not source code, should not be in version control
+- `comms_interface/` — entire package deleted; passive logging-only stubs (IMU, GPS, battery, MAVROS state) with no publishing or commanding; all data is already accessible via `ros2 topic echo` or the controller's own log output; never used in actual flight operations
 
 ---
 
