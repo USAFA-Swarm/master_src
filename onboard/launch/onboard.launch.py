@@ -44,7 +44,6 @@ def generate_launch_description():
         Node(
             package='mavros',
             executable='mavros_node',
-            name='mavros_node',
             namespace=mav['drone_name'],
             output='screen',
             parameters=[{
