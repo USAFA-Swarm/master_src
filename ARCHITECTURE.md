@@ -1,110 +1,202 @@
 # ARCHITECTURE.md — Node Graph, Topics, and Coordinate Frames
 
-## Node Graph (Current State)
+## System Split
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         EXTERNAL PROCESSES                           │
-│                                                                      │
-│   ArduPilot FCU ◄──MAVLink──► mavros_node (/<drone>)                │
-│   usb_cam_node_exe ───────────────────────────────────────────────── │
-└──────────────────────────────────────────────────────────────────────┘
-          │                                    │
-          │ MAVROS topics                      │ /image_raw  (relative,
-          ▼                                    ▼   root namespace)
-┌──────────────────────┐           ┌──────────────────────┐
-│  controller          │           │  apriltag_node       │
-│  (capstone pkg)      │           │  (apriltag pkg)      │
-│                      │           │                      │
-│  Subscribes:         │           │  Parameter:          │
-│  /<d>/state          │           │  camera_info_file    │
-│  /<d>/local_position/│           │                      │
-│    pose              │           │  Subscribes:         │
-│  /<d>/global_position│           │  /image_raw          │
-│    /global           │           │                      │
-│  /<d>/battery        │           │  Publishes:          │
-│  /<d>/rc/in          │           │  /apriltag_pose      │
-│                      │           │  (PoseStamped)       │
-│  Publishes:          │           └──────────────────────┘
-│  /<d>/setpoint_      │                    │
-│    position/local    │                    │  ← NOT YET CONSUMED
-│  /<d>/setpoint_      │                       by any node
-│    position/global   │
-│                      │           ┌──────────────────────┐
-│  Calls Services:     │           │  image_capture.py    │
-│  /<d>/cmd/arming     │           │  (apriltag pkg)      │
-│  /<d>/set_mode       │           │  standalone utility, │
-│  /<d>/cmd/takeoff    │           │  no ros2 run entry   │
-└──────────────────────┘           └──────────────────────┘
+┌─────────────────────────────┐        ┌────────────────────────────────────────┐
+│      GROUND LAPTOP          │        │          PI 4  (onboard)               │
+│                             │        │                                        │
+│  ros2 run capstone          │        │  ros2 launch onboard onboard.launch.py │
+│         controller          │        │                                        │
+│                             │        │  ┌──────────────┐                      │
+│  (controller.py)            │        │  │  mavros_node │ ← FCU ttyACM0        │
+│                             │        │  │  /<drone>/   │   921600 baud        │
+│  SSH workflow:              │        │  └──────────────┘                      │
+│  ssh pi@192.168.168.102     │        │                                        │
+│  mavproxy.py --master=...   │        │  ┌──────────────┐                      │
+│  ros2 run mavros ...        │        │  │  camera_node │ ← CSI ribbon camera  │
+│  (previously manual)        │        │  │  (camera_ros)│   libcamera backend  │
+│                             │        │  └──────────────┘                      │
+│                             │        │                                        │
+│                             │        │  ┌──────────────┐                      │
+│                             │        │  │apriltag_node │                      │
+│                             │        │  │(apriltag_ros)│                      │
+│                             │        │  └──────────────┘                      │
+│                             │        │                                        │
+│                             │        │  ┌──────────────┐                      │
+│                             │        │  │camera_tf_    │ static TF publisher  │
+│                             │        │  │static        │                      │
+│                             │        │  └──────────────┘                      │
+└─────────────────────────────┘        └────────────────────────────────────────┘
+            │  Microhard link (192.168.168.x)  │
+            └──────────────────────────────────┘
+```
+
+---
+
+## Node Graph (Pi onboard + Ground)
+
+```
+  CSI camera
+      │ libcamera
+      ▼
+┌─────────────────┐
+│  camera_node    │  name='camera' → topics resolve to /camera/*
+│  (camera_ros)   │
+│                 │  Publishes:
+│  Params:        │  /camera/image_raw   (sensor_msgs/Image, YUYV)
+│  camera: 0      │  /camera/camera_info (sensor_msgs/CameraInfo)
+│  width: 1280    │
+│  height: 720    │
+│  framerate: 15  │
+└────────┬────────┘
+         │ /camera/image_raw
+         │ /camera/camera_info
+         ▼
+┌─────────────────┐         TF2 tree
+│  apriltag_node  │─────────────────────────────────────────────────────►
+│  (apriltag_ros) │  camera_optical_frame → tag_<id>  (per detection)
+│                 │
+│  Params:        │  Publishes:
+│  family: 36h11  │  /apriltag/detections  (apriltag_msgs/AprilTagDetectionArray)
+│  size: 0.166 m  │
+│  max_hamming: 0 │
+└─────────────────┘
+
+┌─────────────────┐         TF2 tree
+│ camera_tf_static│─────────────────────────────────────────────────────►
+│ (tf2_ros)       │  base_link → camera_optical_frame  (static, from config)
+└─────────────────┘
+
+ArduPilot FCU
+      │ serial ttyACM0 @ 921600
+      ▼
+┌─────────────────┐
+│  mavros_node    │  namespace: /<drone_name>
+│  (mavros)       │
+│                 │  Publishes:  (BEST_EFFORT QoS)
+│  Param:         │  /<d>/state                    mavros_msgs/State
+│  fcu_url:       │  /<d>/local_position/pose      geometry_msgs/PoseStamped
+│  serial://      │  /<d>/global_position/global   sensor_msgs/NavSatFix
+│  /dev/ttyACM0   │  /<d>/battery                  sensor_msgs/BatteryState
+│  :921600        │  /<d>/rc/in                    mavros_msgs/RCIn
+│                 │
+│                 │  Services:
+│                 │  /<d>/cmd/arming               mavros_msgs/srv/CommandBool
+│                 │  /<d>/set_mode                 mavros_msgs/srv/SetMode
+│                 │  /<d>/cmd/takeoff              mavros_msgs/srv/CommandTOL
+└─────────────────┘
+         │
+         │ (Microhard link across network)
+         ▼
+┌─────────────────┐
+│  controller     │  (ground laptop — capstone package)
+│  (capstone)     │
+│                 │  Subscribes: /<d>/state, local_position/pose,
+│                 │             global_position/global, battery, rc/in
+│                 │  Publishes:  /<d>/setpoint_position/local
+│                 │             /<d>/setpoint_position/global
+└─────────────────┘
+
+         /apriltag/detections ──► [NOT YET CONSUMED]
+                                   Landing guidance node needed here
 ```
 
 ---
 
 ## Topic Reference
 
-### capstone/controller — Subscriptions
+### camera_ros / camera_node
 
-| Topic | Message Type | Package | QoS | Notes |
-|---|---|---|---|---|
-| `/<drone>/state` | `mavros_msgs/State` | mavros_msgs | BEST_EFFORT | Armed, mode, connected |
-| `/<drone>/local_position/pose` | `geometry_msgs/PoseStamped` | geometry_msgs | BEST_EFFORT | ENU local frame |
-| `/<drone>/global_position/global` | `sensor_msgs/NavSatFix` | sensor_msgs | BEST_EFFORT | GPS lat/lon/alt |
-| `/<drone>/battery` | `sensor_msgs/BatteryState` | sensor_msgs | BEST_EFFORT | Voltage + percentage |
-| `/<drone>/rc/in` | `mavros_msgs/RCIn` | mavros_msgs | BEST_EFFORT | RC channel values |
-
-### capstone/controller — Publications
-
-| Topic | Message Type | Package | QoS | Notes |
-|---|---|---|---|---|
-| `/<drone>/setpoint_position/local` | `geometry_msgs/PoseStamped` | geometry_msgs | default | ENU local setpoint |
-| `/<drone>/setpoint_position/global` | `geographic_msgs/GeoPoseStamped` | geographic_msgs | default | GPS setpoint (circle mode) |
-
-### capstone/controller — Service Clients
-
-| Service | Type | Package | Notes |
+| Direction | Topic | Message Type | Notes |
 |---|---|---|---|
-| `/<drone>/cmd/arming` | `mavros_msgs/srv/CommandBool` | mavros_msgs | Arm/disarm |
-| `/<drone>/set_mode` | `mavros_msgs/srv/SetMode` | mavros_msgs | STABILIZE, GUIDED, etc. |
-| `/<drone>/cmd/takeoff` | `mavros_msgs/srv/CommandTOL` | mavros_msgs | Takeoff to altitude |
+| Publish | `/camera/image_raw` | `sensor_msgs/Image` | Raw YUYV from CSI sensor; node named `camera` so `~/image_raw` → `/camera/image_raw` |
+| Publish | `/camera/camera_info` | `sensor_msgs/CameraInfo` | Calibration parameters; populated after calibration |
 
-### apriltag/apriltag_node
+### apriltag_ros / apriltag_node
 
-| Direction | Topic | Message Type | QoS | Notes |
-|---|---|---|---|---|
-| Subscribe | `/image_raw` | `sensor_msgs/Image` | default (depth 10) | YUYV format from usb_cam; relative topic name — root namespace |
-| Publish | `/apriltag_pose` | `geometry_msgs/PoseStamped` | default (depth 10) | One message per detected tag per frame; relative topic name — root namespace |
-
-**Parameters:**
-
-| Parameter | Type | Default | Notes |
+| Direction | Topic | Message Type | Notes |
 |---|---|---|---|
-| `camera_info_file` | string | `''` | Path to camera calibration YAML; falls back to `apriltag/config/default_cam.yaml` if empty or missing |
+| Subscribe | `/camera/image_raw` | `sensor_msgs/Image` | Remapped from `image_rect` |
+| Subscribe | `/camera/camera_info` | `sensor_msgs/CameraInfo` | Remapped from `camera_info` |
+| Publish | `/apriltag/detections` | `apriltag_msgs/AprilTagDetectionArray` | Remapped from `detections`; one entry per detected tag |
+| Publish (TF2) | `camera_optical_frame → tag_<id>` | tf2 transform | Published for each detected tag; frame persists until tag lost |
 
-**`frame_id` on `/apriltag_pose`** is set to `str(tag.tag_id)` — the integer tag ID cast to string. This is not a TF frame name.
+### capstone / controller (ground, unchanged)
+
+| Direction | Topic | Message Type | QoS |
+|---|---|---|---|
+| Subscribe | `/<drone>/state` | `mavros_msgs/State` | BEST_EFFORT |
+| Subscribe | `/<drone>/local_position/pose` | `geometry_msgs/PoseStamped` | BEST_EFFORT |
+| Subscribe | `/<drone>/global_position/global` | `sensor_msgs/NavSatFix` | BEST_EFFORT |
+| Subscribe | `/<drone>/battery` | `sensor_msgs/BatteryState` | BEST_EFFORT |
+| Subscribe | `/<drone>/rc/in` | `mavros_msgs/RCIn` | BEST_EFFORT |
+| Publish | `/<drone>/setpoint_position/local` | `geometry_msgs/PoseStamped` | default |
+| Publish | `/<drone>/setpoint_position/global` | `geographic_msgs/GeoPoseStamped` | default |
+
+### capstone / controller — Service Clients
+
+| Service | Type | Notes |
+|---|---|---|
+| `/<drone>/cmd/arming` | `mavros_msgs/srv/CommandBool` | Arm/disarm |
+| `/<drone>/set_mode` | `mavros_msgs/srv/SetMode` | STABILIZE, GUIDED, LAND, RTL |
+| `/<drone>/cmd/takeoff` | `mavros_msgs/srv/CommandTOL` | Takeoff to altitude |
 
 ---
 
 ## Launch File
 
-`apriltag/launch/vision.launch.py` starts both required nodes:
+### Onboard Pi stack: `onboard/launch/onboard.launch.py`
+
+All parameters flow from `onboard/config/onboard.yaml`:
 
 ```
-usb_cam_node_exe  →  /image_raw  →  apriltag_node
-  video_device: /dev/video0
-  framerate: 15.0
-  camera_info_url: file://<pkg>/config/default_cam.yaml
-                                  ↓
-                          camera_info_file param
+onboard.yaml
+    │
+    ├─ mavros.drone_name      → mavros_node namespace
+    ├─ mavros.fcu_url         → mavros_node fcu_url param
+    │
+    ├─ camera.{width,height,  → camera_node params
+    │          framerate}
+    │
+    ├─ apriltag.{family,      → apriltag_node params
+    │            size,
+    │            max_hamming}
+    │
+    └─ camera_tf.{x,y,z,      → static_transform_publisher args
+                  roll,pitch,
+                  yaw}
 ```
 
-No launch file exists for the `capstone` package. The controller is launched manually:
+**To run on Pi:**
 ```bash
-ros2 run capstone controller
+ros2 launch onboard onboard.launch.py
+```
+
+**No launch file exists for the ground `capstone` package** — controller is still run manually:
+```bash
+cd /home/dfec/master_src/capstone/capstone
+python3 controller.py
 ```
 
 ---
 
 ## Coordinate Frames
+
+### TF2 Tree (after onboard launch)
+
+```
+base_link  (drone body: X-forward, Y-left, Z-up)
+    │
+    │  static transform from onboard.yaml camera_tf section
+    │  (PLACEHOLDER VALUES — must be measured from physical mount)
+    ▼
+camera_optical_frame  (X-right, Y-down, Z-into-scene)
+    │
+    │  dynamic, published per detection by apriltag_ros
+    ▼
+tag_<id>  (one frame per detected tag, origin at tag centre)
+```
 
 ### Local Position Frame (ENU — East/North/Up)
 
@@ -120,72 +212,59 @@ Z (Up)
 ```
 
 - Origin: arming location (or home position reset)
-- Units: meters
-- The capstone controller uses this frame for all waypoint and circle setpoints
+- Units: metres
+- Controller uses this for all waypoint and circle setpoints
 
 ### Global Position Frame
 
 Used by MAVROS `global_position/global` and `setpoint_position/global`.
-- Latitude (degrees), Longitude (degrees), Altitude (meters, AMSL)
-- Used in circle mode when GPS coordinates are required
+- Latitude (°), Longitude (°), Altitude (m AMSL)
+- Used in circle mode when GPS is available
 
-### AprilTag Camera Frame
+### Camera Optical Frame (`camera_optical_frame`)
 
-The `apriltag_node` outputs poses in the **camera optical frame**:
+Per ROS REP-103 optical convention:
+
 ```
-Z (into scene / forward)
+Z (into scene / forward through lens)
 │
-│   Y (down)
+│   Y (down in image)
 │  /
 │ /
-└────── X (right)
+└────── X (right in image)
 ```
 
-- Origin: camera optical center
-- Units: meters
-- `t[0]` = lateral offset, `t[1]` = vertical offset, `t[2]` = distance to tag
-- **No TF frame is published** — `frame_id` is the tag's integer ID as a string
-
-### Frame Transforms Needed (Not Yet Implemented)
-
-To use AprilTag poses for landing guidance, the following transforms will be needed:
-1. `camera_optical_frame → body_frame` (fixed mount offset/rotation)
-2. `body_frame → base_link` (standard ArduPilot body frame)
-3. Mapping from tag-relative position to ENU setpoint correction
+- Origin: camera optical centre
+- Units: metres
+- Pose of each detected tag is expressed in this frame by `apriltag_ros`
+- Static transform `base_link → camera_optical_frame` defined in `onboard.yaml`
 
 ---
 
-## State Machine (capstone/controller)
+## State Machine (capstone/controller) — unchanged
 
 ```
 ┌───────────────────────────────────────────────────────────┐
 │                      RC_TAKEOVER                          │
-│  (any state → RC_TAKEOVER when RC ch8 > 1500)            │
-│  (RC_TAKEOVER → ARM when mode returns to GUIDED/RTL ends) │
+│  (any state → RC_TAKEOVER when mode changes to RTL)      │
 └───────────────────────────────────────────────────────────┘
 
                     ┌─────────┐
                ┌───►│   ARM   │◄──────────────────────┐
                │    └────┬────┘                        │
-               │         │ STABILIZE → arm → GUIDED    │
-               │         │ → takeoff                   │
                │    ┌────▼────┐                        │
                │    │WAYPOINT │◄──────────────────────┐│
                │    └────┬────┘  user: <d> x y z      ││
-               │         │ within 0.6m tolerance       ││
                │    ┌────▼────┐                        ││
                │    │  HOVER  │────────────────────────┘│
-               │    └────┬────┘  user: land <d>         │
-               │         │ user: circle ...              │
+               │    └────┬────┘                         │
                │    ┌────▼────┐                         │
                │    │ CIRCLE  │                         │
                │    └────┬────┘                         │
-               │         │ waypoints exhausted           │
                │    ┌────▼────┐                         │
-               └────┤  LAND   │                         │
-                    └────┬────┘                         │
-                         │ altitude < 0.1m              │
-                         └─────────────────────────────►┘
+               └────┤  LAND   │─────────────────────────┘
+                    └─────────┘
+                    (altitude < 0.1 m → reset to ARM)
 ```
 
 ---
@@ -198,39 +277,39 @@ Thread 1 (daemon):    state_machine_loop() at 50 Hz
 Thread 2 (daemon):    user_input_loop()   ← blocks on input()
 ```
 
-All shared state accessed via `self.state[drone_name]` dict. No explicit locks — relies on Python GIL.
+---
+
+## Service Namespace Discovery (capstone/controller)
+
+Tries in order:
+```
+1. /<ns>/cmd/arming
+2. /<ns>/mavros/cmd/arming
+3. /mavros<ns>/cmd/arming
+4. /mavros/cmd/arming
+```
 
 ---
 
-## Service Namespace Discovery
+## Battery State Estimation (capstone/controller)
 
-The controller tries multiple MAVROS namespace patterns in order:
-```
-1. /<ns>/cmd/arming          ← standard ROS2 MAVROS
-2. /<ns>/mavros/cmd/arming   ← if mavros is a sub-namespace
-3. /mavros<ns>/cmd/arming    ← legacy pattern
-```
+- Full: `cell_count × 4.2 V`
+- Empty: `cell_count × 3.5 V`
+- Default: 6S (`cell_count=6`)
+- Abort threshold: 20% → LAND
 
 ---
 
-## Battery State Estimation
-
-For real drones (not SITL), battery percentage is estimated from voltage:
-- Full: `cell_count × 4.2V`
-- Empty: `cell_count × 3.5V`
-- Default cell count: 6S (set in `main()` as `cell_count=6`)
-- Abort threshold: 20% — controller logs a warning and transitions to LAND
-
----
-
-## Missing Connections (Gap in Node Graph)
+## Missing Connections (Gaps)
 
 ```
-apriltag_node  ──/apriltag_pose──►  [NOTHING]
-                                     ↑
-                                     Landing guidance node
-                                     needed here
+apriltag_ros  ──/apriltag/detections──►  [NOT YET CONSUMED]
+                                          ↑
+                                          Landing guidance node
+                                          needed here (Tier 3)
 ```
 
-The AprilTag node publishes `/apriltag_pose` but no node subscribes to it.
-The capstone controller's `LAND` state descends blindly on altitude alone.
+AprilTag detections and TF2 tag frames are published but nothing
+subscribes to them. The controller's LAND state still descends blindly.
+The next major work item is a precision landing node that consumes
+`/apriltag/detections` and adjusts `setpoint_position/local` during descent.

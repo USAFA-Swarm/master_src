@@ -1,0 +1,82 @@
+# onboard.yaml — Pi 4 onboard stack configuration
+#
+# Single source of truth for all parameters.
+# Edit this file to match your physical setup; the launch file reads
+# only from here — nothing is hardcoded in the launch file.
+#
+# Deploy to Pi:  scp this file is installed automatically via colcon install.
+# To override a value without editing this file, pass a launch argument:
+#   ros2 launch onboard onboard.launch.py (reads this file at launch time)
+
+# ---------------------------------------------------------------------------
+# MAVROS
+# ---------------------------------------------------------------------------
+mavros:
+  # ROS2 node namespace — must match the name you type into controller.py
+  # Real drone: "drone1"  |  Simulation: "sim1"
+  drone_name: "drone1"
+
+  # FCU serial port and baud rate
+  # Real drone (Pi ↔ Pixhawk/ArduPilot via USB): serial:///dev/ttyACM0:921600
+  # If ttyACM0 is wrong, check: ls /dev/ttyACM* or ls /dev/ttyUSB*
+  fcu_url: "serial:///dev/ttyACM0:921600"
+
+# ---------------------------------------------------------------------------
+# Camera  (camera_ros / libcamera — CSI ribbon camera on Pi 4)
+# ---------------------------------------------------------------------------
+camera:
+  # libcamera device index (0 = first CSI camera)
+  camera: 0
+
+  # Capture resolution — must be a mode supported by your sensor
+  # Common Pi Camera v2 modes: 640x480, 1280x720, 1920x1080
+  # Common Pi Camera v3 modes: 1536x864, 2304x1296, 4608x2592
+  width: 1280
+  height: 720
+
+  # Frames per second
+  framerate: 15.0
+
+  # TF frame ID stamped on published images — must match camera_tf.child_frame
+  frame_id: "camera_optical_frame"
+
+# ---------------------------------------------------------------------------
+# AprilTag detection  (apriltag_ros — ros-humble-apriltag-ros)
+# ---------------------------------------------------------------------------
+apriltag:
+  # Tag family — must match the tags physically printed on the landing pads
+  # Options: 36h11, 25h9, 16h5, Circle21h7, Circle49h12
+  tag_family: "36h11"
+
+  # Physical side length of the tag square in metres (black border to black border)
+  # MEASURE THIS on your actual printed tag — pose accuracy depends on it
+  tag_size: 0.166
+
+  # Maximum hamming distance for detection (0 = exact match only, recommended)
+  max_hamming: 0
+
+# ---------------------------------------------------------------------------
+# Static TF: body frame → camera optical frame
+# ---------------------------------------------------------------------------
+# IMPORTANT: These values are PLACEHOLDERS. Measure the physical offset and
+# rotation of the camera from the drone's body centre before trusting pose data.
+#
+# Conventions (ROS REP-103):
+#   parent  base_link           = body centre, X-forward, Y-left, Z-up
+#   child   camera_optical_frame = X-right, Y-down, Z-into-scene (forward)
+#
+# For a downward-facing camera centred on the body:
+#   x=0, y=0, z=-0.05 (5 cm below body centre)
+#   roll=pi (180°) flips Y and Z so camera Z points down into the ground
+#   pitch=0, yaw=0 assuming the camera ribbon faces forward
+#
+# Adjust roll/pitch/yaw if your camera is rotated in the mount.
+camera_tf:
+  parent_frame: "base_link"
+  child_frame:  "camera_optical_frame"
+  x:     0.0        # metres, forward  (+X body)
+  y:     0.0        # metres, left     (+Y body)
+  z:    -0.05       # metres, up       (+Z body)  — negative = below body
+  roll:  3.14159    # radians  (pi = 180° for downward-facing)
+  pitch: 0.0        # radians
+  yaw:   0.0        # radians
