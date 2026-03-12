@@ -19,8 +19,10 @@ class DroneState:
     RC_TAKEOVER = 'RC_TAKEOVER'
 
 class Controller(Node):
-    def __init__(self, drone_names):
+    def __init__(self, drone_names, cell_count=6):
         super().__init__('controller')
+
+        self.cell_count = cell_count
 
         # Explicit QoS to match MAVROS publisher settings (BEST_EFFORT, VOLATILE, KEEP_LAST)
         qos = QoSProfile(
@@ -40,6 +42,7 @@ class Controller(Node):
             self.state[name] = {
                 'pose': None,
                 'battery': None,
+                'battery_pct': 1.0,
                 'state': None,
                 'rc': None,
                 'gps': None,
@@ -125,11 +128,34 @@ class Controller(Node):
             self.get_logger().info(f"[{drone}] GPS data received")
         self.state[drone]['gps'] = msg
         
+    def _voltage_to_percentage(self, voltage):
+        """Estimate LiPo state of charge from pack voltage.
+
+        Uses self.cell_count (set at startup from user input) so the per-cell
+        voltage is always calculated correctly regardless of charge state.
+        Linear approximation: 3.5 V/cell = 0%, 4.2 V/cell = 100%.
+        """
+        if voltage <= 0:
+            return 1.0  # No data yet — assume full so we don't false-trigger warnings
+        cell_v = voltage / self.cell_count
+        pct = (cell_v - 3.5) / (4.2 - 3.5)
+        return max(0.0, min(1.0, pct))
+
     def battery_callback(self, msg, drone):
+        first_reading = self.state[drone].get('battery') is None
         self.state[drone]['battery'] = msg
-        # Only warn once about low battery
-        if msg.percentage < 0.20 and not self.state[drone].get('low_battery_warned'):
-            self.get_logger().warn(f"[{drone}] Low battery: {msg.percentage*100:.1f}%")
+        if drone.lower().startswith('sim'):
+            # Simulation FCU reports accurate percentage directly
+            self.state[drone]['battery_pct'] = msg.percentage
+        else:
+            # Real drone FCU percentage is unreliable (commonly stuck at 99%);
+            # derive from voltage using known 6-cell configuration.
+            self.state[drone]['battery_pct'] = self._voltage_to_percentage(msg.voltage)
+        pct = self.state[drone]['battery_pct']
+        if first_reading:
+            self.get_logger().info(f"[{drone}] Battery: {pct*100:.1f}% ({msg.voltage:.2f}V)")
+        if pct < 0.20 and not self.state[drone].get('low_battery_warned'):
+            self.get_logger().warn(f"[{drone}] Low battery: {pct*100:.1f}% (voltage: {msg.voltage:.2f}V)")
             self.state[drone]['low_battery_warned'] = True
     def rc_callback(self, msg, drone):
         self.state[drone]['rc'] = msg
@@ -349,7 +375,13 @@ class Controller(Node):
     # ------------------- User Input -------------------
     def display_command_options(self):
         print("\nController ready. Available commands:")
-        print(f"Available drones: {', '.join(self.drones)}")
+        for name in self.drones:
+            pct = self.state[name].get('battery_pct')
+            voltage = self.state[name].get('battery')
+            if pct is not None and voltage is not None:
+                print(f"  [{name}] Battery: {pct*100:.1f}% ({voltage.voltage:.2f}V)")
+            else:
+                print(f"  [{name}] Battery: waiting for data")
         print("\nCommands:")
         print("  Waypoint:  <drone> <x> <y> <z>      (Example: sim1 1.0 2.0 3.0)")
         print("  Circle:    circle <drone1> [drone2 ...] <alt> <radius>")
@@ -418,8 +450,9 @@ class Controller(Node):
                     low_battery_drones = []
                     for d in formation_drones:
                         battery = self.state[d].get('battery')
-                        if battery and battery.percentage < 0.20:
-                            low_battery_drones.append(f"{d} ({battery.percentage*100:.1f}%)")
+                        pct = self.state[d].get('battery_pct', 1.0)
+                        if battery and pct < 0.20:
+                            low_battery_drones.append(f"{d} ({pct*100:.1f}%)")
                     if low_battery_drones:
                         self.get_logger().error(f"Battery too low for: {', '.join(low_battery_drones)}")
                         self.display_command_options()
@@ -525,8 +558,9 @@ class Controller(Node):
 
                     # Check battery level before allowing arming
                     battery = self.state[drone].get('battery')
-                    if battery and battery.percentage < 0.20:  # 20% battery threshold
-                        self.get_logger().error(f"[{drone}] Cannot execute command - battery level too low ({battery.percentage*100:.1f}%)")
+                    pct = self.state[drone].get('battery_pct', 1.0)
+                    if battery and pct < 0.20:  # 20% battery threshold
+                        self.get_logger().error(f"[{drone}] Cannot execute command - battery level too low ({pct*100:.1f}%)")
                         self.display_command_options()
                         continue
                     
@@ -603,8 +637,9 @@ class Controller(Node):
                 if s['current_state'] == DroneState.ARM and s['ready_to_arm']:
                     # Double-check battery level before arming
                     battery = s.get('battery')
-                    if battery and battery.percentage < 0.20:  # 20% battery threshold
-                        self.get_logger().error(f"[{drone}] Aborting takeoff - battery too low ({battery.percentage*100:.1f}%)")
+                    pct = s.get('battery_pct', 1.0)
+                    if battery and pct < 0.20:  # 20% battery threshold
+                        self.get_logger().error(f"[{drone}] Aborting takeoff - battery too low ({pct*100:.1f}%)")
                         self.get_logger().error(f"[{drone}] Battery must be above 20% for safe flight operations")
                         s['ready_to_arm'] = False
                         s['current_state'] = DroneState.ARM
