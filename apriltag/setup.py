@@ -13,7 +13,6 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/config', ['config/default_cam.yaml']),
-        ('share/' + package_name + '/config', ['config/CHANGE_ME.svm']),
         (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
     ],
     install_requires=['setuptools'],

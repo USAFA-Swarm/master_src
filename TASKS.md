@@ -184,9 +184,9 @@ These depend on Tier 1 and Tier 2 being completed first.
             ▼
 [Tier 2 Completions]
     ├── Complete launch file
-    ├── Parameterize comms/move2hover
+    ├── Parameterize comms
     ├── Capstone launch file
-    └── Clarify drone_interface role
+    └── (drone_interface removed)
             │
             ▼
 [Tier 3 New Features]
@@ -217,3 +217,16 @@ If starting fresh on the AprilTag landing feature, the minimum path is:
 5. Design and implement precision landing node (main effort)
 6. Add TF static transform for camera mount (10 min)
 7. Integrate landing node trigger into capstone LAND state
+
+---
+
+## Removed
+
+- `drone_interface/` — entire package deleted; only contained an empty `__init__.py` and an entry point referencing a nonexistent `controller.py` module; no implementation existed
+- `move2hover/` — entire package deleted; uses `cmd_vel`/odometry architecture incompatible with MAVROS/ArduPilot; hardcoded goals and topics; no connection to any other package in the workspace
+- `apriltag/launch/vision.lauch.CHANGE_ME.py` — deleted; filename typo ("lauch"), unresolved TODO stubs throughout, and references a `stop_detector` executable that does not exist in this workspace
+- `apriltag/config/CHANGE_ME.svm` — deleted; placeholder file for the nonexistent `stop_detector` node; zero real content
+- `apriltag/setup.py` line referencing `config/CHANGE_ME.svm` — removed dead `data_files` entry pointing to the deleted placeholder
+- `eeprom.bin` — deleted; ArduPilot EEPROM runtime dump, not source code, should not be in version control
+- `mav.tlog` — deleted; MAVLink telemetry runtime log, not source code, should not be in version control
+- `mav.tlog.raw` — deleted; MAVLink telemetry runtime log (raw), not source code, should not be in version control
