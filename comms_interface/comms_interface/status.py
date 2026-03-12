@@ -7,10 +7,13 @@ class StatusNode(Node):
     def __init__(self):
         super().__init__('status_node')
 
+        self.declare_parameter('drone_name', 'smaug2')
+        drone = self.get_parameter('drone_name').get_parameter_value().string_value
+
         # Subscriptions to relevant system topics
-        self.create_subscription(State, '/smaug2/state', self.state_callback, 10)
-        self.create_subscription(ExtendedState, '/smaug2/extended_state', self.extended_state_callback, 10)
-        self.create_subscription(SysStatus, '/smaug2/sys_status', self.sys_status_callback, 10)
+        self.create_subscription(State, f'/{drone}/state', self.state_callback, 10)
+        self.create_subscription(ExtendedState, f'/{drone}/extended_state', self.extended_state_callback, 10)
+        self.create_subscription(SysStatus, f'/{drone}/sys_status', self.sys_status_callback, 10)
         self.create_subscription(DiagnosticArray, '/diagnostics', self.diagnostics_callback, 10)
 
         # Store latest values

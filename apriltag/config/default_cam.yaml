@@ -1,0 +1,61 @@
+# Camera calibration file for AprilTag detection node.
+#
+# IMPORTANT: These are PLACEHOLDER values. The node will load this file but
+# pose estimates will be incorrect until you replace these with real calibration
+# data from your specific camera.
+#
+# To calibrate: run the ROS2 camera_calibration package while showing a
+# checkerboard pattern to the camera:
+#   ros2 run camera_calibration cameracalibrator \
+#     --size 8x6 --square 0.025 \
+#     image:=/image_raw camera:=/camera
+#
+# Then save the result and copy the camera_matrix and distortion_coefficients
+# sections below.
+#
+# The apriltag node reads only 'camera_matrix.data' and
+# 'distortion_coefficients.data' from this file.
+
+image_width: 640
+image_height: 480
+camera_name: usb_cam
+
+# Intrinsic camera matrix (row-major, 3x3):
+#   [fx,  0, cx,
+#     0, fy, cy,
+#     0,  0,  1]
+# fx, fy: focal lengths in pixels
+# cx, cy: principal point (optical center) in pixels
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [600.0, 0.0, 320.0,
+           0.0, 600.0, 240.0,
+           0.0,   0.0,   1.0]
+
+# Distortion model (plumb_bob = standard radial+tangential)
+distortion_model: plumb_bob
+
+# Distortion coefficients [k1, k2, p1, p2, k3]
+# k1, k2, k3: radial distortion
+# p1, p2:     tangential distortion
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [0.0, 0.0, 0.0, 0.0, 0.0]
+
+# Rectification matrix (identity for monocular cameras)
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1.0, 0.0, 0.0,
+         0.0, 1.0, 0.0,
+         0.0, 0.0, 1.0]
+
+# Projection matrix (3x4) — same as camera_matrix with zero 4th column for monocular
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [600.0, 0.0, 320.0, 0.0,
+           0.0, 600.0, 240.0, 0.0,
+           0.0,   0.0,   1.0, 0.0]

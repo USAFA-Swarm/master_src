@@ -230,3 +230,39 @@ If starting fresh on the AprilTag landing feature, the minimum path is:
 - `eeprom.bin` — deleted; ArduPilot EEPROM runtime dump, not source code, should not be in version control
 - `mav.tlog` — deleted; MAVLink telemetry runtime log, not source code, should not be in version control
 - `mav.tlog.raw` — deleted; MAVLink telemetry runtime log (raw), not source code, should not be in version control
+
+---
+
+## Fixed
+
+Fixes applied in dependency order (foundational → code-level → config → launch).
+
+### package.xml — capstone
+- `capstone/package.xml` was empty; wrote full format-3 manifest declaring `rclpy`, `geometry_msgs`, `geographic_msgs`, `sensor_msgs`, `mavros_msgs`; without this `colcon build` cannot resolve dependencies
+
+### package.xml — apriltag
+- `apriltag/package.xml` had wrong maintainer, wrong `opencv2` dep (not a rosdep key), spurious `buildtool_depend ament_cmake` (package is ament_python), and was missing `geometry_msgs`, `python3-numpy`, `python3-yaml`, `python3-scipy`; corrected all entries
+
+### package.xml — comms_interface
+- `comms_interface/package.xml` was empty; wrote full format-3 manifest declaring `rclpy`, `sensor_msgs`, `mavros_msgs`, `diagnostic_msgs`
+
+### comms_interface/setup.py — entry point typo
+- Entry point name was `telemtry` and module path was `comms_interface.telemtry:main`; corrected both to `telemetry` / `comms_interface.telemetry:main`; the actual source file is `telemetry.py` so the old entry point would fail at `ros2 run`
+
+### apriltag/apriltag/apriltag.py:88 — wrong package name
+- `get_package_share_directory('lab11_apriltag')` changed to `get_package_share_directory('apriltag')`; the old name references a non-existent package causing `PackageNotFoundError` on node startup whenever `camera_info_file` param is not explicitly set
+
+### apriltag/apriltag/apriltag.py:188 — indentation inconsistency
+- Extra leading space before `# TODO: Label the tag ID` comment removed; was breaking visual alignment and would cause `W191`/`E101` lint warnings
+
+### comms_interface/telemetry.py — hardcoded drone namespace
+- Replaced hardcoded `/smaug2/` topic prefixes with a `drone_name` ROS2 parameter (default `smaug2`); topics built as `f'/{drone}/...'`; node was silently subscribing to the wrong drone on any multi-drone setup
+
+### comms_interface/status.py — hardcoded drone namespace
+- Same fix as telemetry.py; `drone_name` parameter controls the `/state`, `/extended_state`, and `/sys_status` topic prefixes; `/diagnostics` is left as an absolute topic since it is system-wide
+
+### apriltag/config/default_cam.yaml — empty calibration file
+- File was 0 bytes; `load_camera_info()` would crash with a `KeyError` trying to read `camera_matrix.data`; replaced with a valid-structure YAML template using placeholder values (fx=fy=600, cx=320, cy=240, zero distortion); comments explain how to run `camera_calibration` to produce real values; poses will be inaccurate until real calibration data is substituted
+
+### apriltag/launch/vision.launch.py — missing launch file (was deleted typo version)
+- Created `vision.launch.py` (correct spelling) replacing the deleted `vision.lauch.CHANGE_ME.py`; launches `usb_cam_node_exe` and `apriltag_node` with `camera_info_file` parameter pointing to the package config; removed the nonexistent `stop_detector` node that was in the original

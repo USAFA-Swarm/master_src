@@ -85,7 +85,7 @@ class AprilTagNode(Node):
             camera_info_path = calib_file
         else:
             # Fallback to default calibration file within the package
-            pkg_share = get_package_share_directory('lab11_apriltag')
+            pkg_share = get_package_share_directory('apriltag')
             camera_info_path = os.path.join(pkg_share, 'config', 'default_cam.yaml')
             if not os.path.isfile(camera_info_path):  # If the default file is missing, raise an error
                 self.get_logger().error(f"Default calibration file not found: {camera_info_path}")
@@ -185,7 +185,7 @@ class AprilTagNode(Node):
             cv2.polylines(rectified_gray, [corners], isClosed=True, color=(0, 255, 0), thickness=2)
             center = tuple(np.int32(tag.center))
             
-             # TODO: Label the tag ID at the center of the tag.
+            # TODO: Label the tag ID at the center of the tag.
             cv2.putText(rectified_gray, str(tag.tag_id), center, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
         # Display the rectified image with drawn tags
