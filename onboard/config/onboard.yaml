@@ -28,17 +28,21 @@ camera:
   # libcamera device index (0 = first CSI camera)
   camera: 0
 
+  # Pixel format passed to libcamera. RGB888 is confirmed working on IMX296.
+  # Other options: XRGB8888, YUV420 — change only if RGB888 fails on your sensor.
+  format: "RGB888"
+
   # Capture resolution — must be a mode supported by your sensor
-  # Common Pi Camera v2 modes: 640x480, 1280x720, 1920x1080
-  # Common Pi Camera v3 modes: 1536x864, 2304x1296, 4608x2592
+  # IMX296 max: 1456x1088. Working: 1280x720
   width: 1280
   height: 720
 
-  # Frames per second
+  # Frames per second (camera_ros logs a non-fatal warning about this param on IMX296)
   framerate: 15.0
 
   # TF frame ID stamped on published images — must match camera_tf.child_frame
-  frame_id: "camera_optical_frame"
+  # Note: camera_ros ignores this param and always uses the node name ("camera")
+  frame_id: "camera"
 
 # ---------------------------------------------------------------------------
 # AprilTag detection  (apriltag_ros — ros-humble-apriltag-ros)
@@ -50,7 +54,7 @@ apriltag:
 
   # Physical side length of the tag square in metres (black border to black border)
   # MEASURE THIS on your actual printed tag — pose accuracy depends on it
-  tag_size: 0.166
+  tag_size: 0.614
 
   # Maximum hamming distance for detection (0 = exact match only, recommended)
   max_hamming: 0
@@ -73,10 +77,23 @@ apriltag:
 # Adjust roll/pitch/yaw if your camera is rotated in the mount.
 camera_tf:
   parent_frame: "base_link"
-  child_frame:  "camera_optical_frame"
+  child_frame:  "camera"          # matches frame_id published by camera_ros node
   x:     0.0        # metres, forward  (+X body)
   y:     0.0        # metres, left     (+Y body)
   z:    -0.05       # metres, up       (+Z body)  — negative = below body
-  roll:  3.14159    # radians  (pi = 180° for downward-facing)
+  roll:  3.14159    # radians  (pi = 180° — downward-facing camera + 180° image rotation)
   pitch: 0.0        # radians
-  yaw:   0.0        # radians
+  yaw:   0.0        # radians  — if lateral corrections are 90° off, change to 1.5708 or 3.14159
+
+# ---------------------------------------------------------------------------
+# Precision landing node
+# ---------------------------------------------------------------------------
+precision_landing:
+  drone_name: "drone1"      # must match mavros.drone_name
+  landing_tag_id: 0         # tag ID to home on; filter from /apriltag/detections
+  confirm_frames: 5         # consecutive detection frames before taking control
+  tag_loss_timeout: 3.0     # seconds without tag before holding position (warn)
+  descent_step: 0.05        # metres to descend per control cycle while tag visible
+  land_final_alt: 0.4       # metres AGL — hand off to ArduCopter LAND below this
+  lateral_gain: 0.6         # fraction of lateral error corrected per cycle (0.0–1.0)
+  loop_rate: 10.0           # Hz — control loop rate

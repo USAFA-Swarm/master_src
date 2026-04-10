@@ -1,61 +1,50 @@
 # Camera calibration file for AprilTag detection node.
 #
-# IMPORTANT: These are PLACEHOLDER values. The node will load this file but
-# pose estimates will be incorrect until you replace these with real calibration
-# data from your specific camera.
-#
-# To calibrate: run the ROS2 camera_calibration package while showing a
-# checkerboard pattern to the camera:
-#   ros2 run camera_calibration cameracalibrator \
-#     --size 8x6 --square 0.025 \
-#     image:=/image_raw camera:=/camera
-#
-# Then save the result and copy the camera_matrix and distortion_coefficients
-# sections below.
+# Calibrated: 2026-04-08
+# Camera:     IMX296 global shutter CSI, 1280x720, RGB888
+# Checkerboard: 8x5 interior corners, 24mm squares
+# RMS reprojection error: see calibration session output
 #
 # The apriltag node reads only 'camera_matrix.data' and
 # 'distortion_coefficients.data' from this file.
 
-image_width: 640
-image_height: 480
-camera_name: usb_cam
+image_width: 1280
+image_height: 720
+camera_name: imx296
 
 # Intrinsic camera matrix (row-major, 3x3):
 #   [fx,  0, cx,
 #     0, fy, cy,
 #     0,  0,  1]
-# fx, fy: focal lengths in pixels
-# cx, cy: principal point (optical center) in pixels
+# fx=1551.157  fy=1547.374  cx=663.415  cy=341.480
 camera_matrix:
   rows: 3
   cols: 3
-  data: [600.0, 0.0, 320.0,
-           0.0, 600.0, 240.0,
-           0.0,   0.0,   1.0]
+  data: [1551.15677,    0.       ,  663.41499,
+            0.       , 1547.37438,  341.4802 ,
+            0.       ,    0.       ,    1.       ]
 
 # Distortion model (plumb_bob = standard radial+tangential)
 distortion_model: plumb_bob
 
 # Distortion coefficients [k1, k2, p1, p2, k3]
-# k1, k2, k3: radial distortion
-# p1, p2:     tangential distortion
 distortion_coefficients:
   rows: 1
   cols: 5
-  data: [0.0, 0.0, 0.0, 0.0, 0.0]
+  data: [-0.458869, 0.235027, 0.003951, 0.000773, 0.000000]
 
 # Rectification matrix (identity for monocular cameras)
 rectification_matrix:
   rows: 3
   cols: 3
-  data: [1.0, 0.0, 0.0,
-         0.0, 1.0, 0.0,
-         0.0, 0.0, 1.0]
+  data: [1., 0., 0.,
+         0., 1., 0.,
+         0., 0., 1.]
 
-# Projection matrix (3x4) — same as camera_matrix with zero 4th column for monocular
+# Projection matrix (3x4)
 projection_matrix:
   rows: 3
   cols: 4
-  data: [600.0, 0.0, 320.0, 0.0,
-           0.0, 600.0, 240.0, 0.0,
-           0.0,   0.0,   1.0, 0.0]
+  data: [1420.0509 ,    0.       ,  668.23382,    0.       ,
+            0.       , 1505.96118,  341.12261,    0.       ,
+            0.       ,    0.       ,    1.       ,    0.       ]

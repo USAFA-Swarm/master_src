@@ -34,6 +34,7 @@ def generate_launch_description():
     cam = cfg['camera']
     tag = cfg['apriltag']
     tf  = cfg['camera_tf']
+    pl  = cfg['precision_landing']
 
     return LaunchDescription([
 
@@ -63,6 +64,7 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'camera':    cam['camera'],
+                'format':    cam['format'],
                 'width':     cam['width'],
                 'height':    cam['height'],
                 'framerate': cam['framerate'],
@@ -71,7 +73,24 @@ def generate_launch_description():
         ),
 
         # ------------------------------------------------------------------
-        # 3. AprilTag detection (apriltag_ros)
+        # 3. Image rotate — corrects upside-down camera (Rotate180 physical mount)
+        #    Subscribes /camera/image_raw, publishes /camera/image_rotated
+        #    AprilTag and any viewer should use /camera/image_rotated
+        # ------------------------------------------------------------------
+        Node(
+            package='image_rotate',
+            executable='image_rotate',
+            name='image_rotate',
+            output='screen',
+            parameters=[{'rotation_angle': 3.14159265}],
+            remappings=[
+                ('image',         '/camera/image_raw'),
+                ('rotated/image', '/camera/image_rotated'),
+            ],
+        ),
+
+        # ------------------------------------------------------------------
+        # 4. AprilTag detection (apriltag_ros)
         #    Subscribes to /camera/image_raw and /camera/camera_info
         #    Publishes  /apriltag/detections (AprilTagDetectionArray)
         #    Publishes  TF2: camera_optical_frame → tag_<id>
@@ -87,9 +106,9 @@ def generate_launch_description():
                 'max_hamming': tag['max_hamming'],
             }],
             remappings=[
-                # camera_ros publishes to /camera/image_raw and /camera/camera_info
                 # apriltag_ros subscribes by default to image_rect + camera_info
-                ('image_rect',  '/camera/image_raw'),
+                # Use image_rotated so AprilTag sees the corrected (right-side-up) image
+                ('image_rect',  '/camera/image_rotated'),
                 ('camera_info', '/camera/camera_info'),
                 # publish detections under /apriltag/ namespace
                 ('detections',  '/apriltag/detections'),
@@ -97,7 +116,7 @@ def generate_launch_description():
         ),
 
         # ------------------------------------------------------------------
-        # 4. Static TF: base_link → camera_optical_frame
+        # 5. Static TF: base_link → camera
         #    Tells tf2 where the camera sits relative to the drone body.
         #    Values must be measured from the physical mount.
         # ------------------------------------------------------------------
@@ -115,6 +134,28 @@ def generate_launch_description():
                 '--frame-id',       tf['parent_frame'],
                 '--child-frame-id', tf['child_frame'],
             ],
+        ),
+
+        # ------------------------------------------------------------------
+        # 6. Precision landing — monitors /apriltag/detections at all times;
+        #    takes setpoint control when target tag is confirmed visible,
+        #    centers laterally, descends, hands off to ArduCopter LAND
+        # ------------------------------------------------------------------
+        Node(
+            package='onboard',
+            executable='precision_landing',
+            name='precision_landing',
+            output='screen',
+            parameters=[{
+                'drone_name':       pl['drone_name'],
+                'landing_tag_id':   pl['landing_tag_id'],
+                'confirm_frames':   pl['confirm_frames'],
+                'tag_loss_timeout': pl['tag_loss_timeout'],
+                'descent_step':     pl['descent_step'],
+                'land_final_alt':   pl['land_final_alt'],
+                'lateral_gain':     pl['lateral_gain'],
+                'loop_rate':        pl['loop_rate'],
+            }],
         ),
 
     ])

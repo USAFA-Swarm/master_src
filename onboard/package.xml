@@ -11,8 +11,17 @@
   <exec_depend>mavros</exec_depend>
   <exec_depend>camera_ros</exec_depend>
   <exec_depend>apriltag_ros</exec_depend>
+  <exec_depend>image_rotate</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
+  <!-- precision_landing node dependencies -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>tf2_geometry_msgs</exec_depend>
+  <exec_depend>apriltag_msgs</exec_depend>
+  <exec_depend>mavros_msgs</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

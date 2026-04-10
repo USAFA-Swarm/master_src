@@ -6,10 +6,13 @@
 GROUND LAPTOP (192.168.168.103)          PI 4 (192.168.168.102)
 ────────────────────────────────         ──────────────────────────────────────
 ros2 run capstone controller             ros2 launch onboard onboard.launch.py
-  (python3 controller.py)                  mavros_node     ← ttyACM0 @ 921600
-                                           camera_node     ← CSI [PENDING]
-  Microhard radio link                     apriltag_node   ← /camera/* [PENDING]
-  192.168.168.x subnet                     camera_tf_static
+  (python3 controller.py)                  mavros_node        ← ttyACM0 @ 921600
+                                           camera_node        ← CSI IMX296
+  Microhard radio link                     image_rotate       ← /camera/image_raw
+  192.168.168.x subnet                     apriltag_node      ← /camera/image_rotated
+                                           precision_landing  ← /apriltag/detections
+  /<d>/precision_landing/takeover          camera_tf_static
+  (Pi→Ground, Bool) ──────────────────────────────────────────────────────────
 ────────────────────────────────         ──────────────────────────────────────
 ```
 
@@ -45,6 +48,7 @@ ArduPilot FCU
 │                       │  Subscribes (BEST_EFFORT):
 │                       │  /<d>/state, local_position/pose,
 │                       │  global_position/global, battery, rc/in
+│                       │  /<d>/precision_landing/takeover  Bool (Pi→Ground)
 │                       │
 │                       │  Publishes:
 │                       │  /<d>/setpoint_position/local   PoseStamped
@@ -54,45 +58,64 @@ ArduPilot FCU
 └───────────────────────┘
 
 
-── CAMERA SUBSYSTEM — PENDING (CSI hardware issue) ──────────────────────────
+── CAMERA / VISION SUBSYSTEM ─────────────────────────────────────────────────
 
-CSI ribbon camera
-    │ [NOT CONNECTED — cable/connector fault]
-    │  sudo dmesg shows no unicam/imx entries
+CSI ribbon camera (IMX296 global shutter, 1280×720, calibrated 2026-04-08)
+    │
     ▼
 ┌───────────────────────┐
-│  camera_node          │  [PENDING]
-│  (camera_ros pkg)     │  node name: camera → topics at /camera/*
+│  camera_node          │  node name: camera → topics at /camera/*
+│  (camera_ros pkg)     │  frame_id published: "camera" (node name, not param)
 │                       │
 │                       │  Publishes:
-│                       │  /camera/image_raw    sensor_msgs/Image
+│                       │  /camera/image_raw    sensor_msgs/Image  (upside-down)
 │                       │  /camera/camera_info  sensor_msgs/CameraInfo
 └───────────────────────┘
     │
     ▼
 ┌───────────────────────┐
-│  apriltag_node        │  [PENDING — blocked on camera]
-│  (apriltag_ros pkg)   │
-│                       │  Subscribes:
-│                       │  /camera/image_raw    (remapped from image_rect)
-│                       │  /camera/camera_info  (remapped from camera_info)
+│  image_rotate         │  rotation_angle: π — corrects upside-down mount
+│  (image_rotate pkg)   │
+│                       │  /camera/image_raw → /camera/image_rotated
+└───────────────────────┘
+    │
+    ▼
+┌───────────────────────┐
+│  apriltag_node        │
+│  (apriltag_ros pkg)   │  Subscribes:
+│                       │  /camera/image_rotated  (correct orientation)
+│                       │  /camera/camera_info
 │                       │
 │                       │  Publishes:
 │                       │  /apriltag/detections  apriltag_msgs/AprilTagDetectionArray
 │                       │
 │                       │  TF2 (dynamic, per detection):
-│                       │  camera_optical_frame → tag_<id>
+│                       │  camera → tag<id>
+└───────────────────────┘
+    │
+    ▼
+┌───────────────────────┐
+│  precision_landing    │  Subscribes:
+│  (onboard pkg)        │  /apriltag/detections  — always watching
+│                       │  /<d>/local_position/pose
+│                       │  /<d>/precision_landing/abort  (Bool, from ground)
+│                       │
+│                       │  Publishes:
+│                       │  /<d>/setpoint_position/local   (when CENTERING)
+│                       │  /<d>/precision_landing/takeover  Bool (Pi→Ground)
+│                       │
+│                       │  Service client:
+│                       │  /<d>/set_mode  (LAND on handoff)
+│                       │
+│                       │  State machine: IDLE → CENTERING → HANDOFF → IDLE
 └───────────────────────┘
 
 ┌───────────────────────┐
 │  camera_tf_static     │  static_transform_publisher
-│  (tf2_ros)            │  base_link → camera_optical_frame
-│                       │  values from onboard.yaml camera_tf section
-│                       │  [PLACEHOLDER values — not yet measured]
+│  (tf2_ros)            │  base_link → camera
+│                       │  x=0, y=0, z=-0.05, roll=π, pitch=0, yaw=0
+│                       │  (confirmed measurements 2026-04-09)
 └───────────────────────┘
-
-    /apriltag/detections ──► [NOT YET CONSUMED]
-                              Precision landing node needed here (Tier 2)
 ```
 
 ---
@@ -161,13 +184,16 @@ Single source of truth for all onboard parameters. Nothing hardcoded in launch f
 
 ```
 base_link  (body: X-forward, Y-left, Z-up)
-    │  static — onboard.yaml camera_tf  [PLACEHOLDER values]
+    │  static — onboard.yaml camera_tf  (x=0, y=0, z=-0.05, roll=π)
     ▼
-camera_optical_frame  (X-right, Y-down, Z-into-scene)
+camera  (frame_id published by camera_ros; X-right, Y-down, Z-into-scene)
     │  dynamic — apriltag_ros, one per detection
     ▼
-tag_<id>  (origin at tag centre, Z pointing out of tag face)
+tag<id>  (origin at tag centre, Z pointing out of tag face)
 ```
+
+Full chain for precision landing TF lookup: `map → base_link → camera → tag<id>`
+(MAVROS publishes dynamic `map → base_link`)
 
 ### Local ENU (MAVROS local_position)
 - X = East, Y = North, Z = Up
@@ -186,6 +212,8 @@ tag_<id>  (origin at tag centre, Z pointing out of tag face)
 ARM → WAYPOINT → HOVER → WAYPOINT (loop)
                        → CIRCLE → LAND → ARM (reset)
                        → LAND
+                       → PRECISION_LANDING (on takeover=True from Pi)
+PRECISION_LANDING → HOVER (on takeover=False from Pi — landing complete or aborted)
 Any state → RC_TAKEOVER (on RTL mode detect) → ARM
 ```
 
@@ -215,8 +243,8 @@ Controller tries in order per drone:
 
 ---
 
-## Battery State Estimation
+## Battery Monitoring
 
-- Full: `cell_count × 4.2 V`  |  Empty: `cell_count × 3.5 V`
-- Default: 6S (`cell_count=6`, hardcoded in `main()`)
-- Abort at 20% → LAND state
+Battery monitoring is delegated to Mission Planner / ArduCopter's onboard failsafe.
+The controller displays raw voltage at the command prompt for operator awareness only.
+No abort logic exists in the controller — Mission Planner handles failsafe actions.

@@ -5,6 +5,7 @@ from geometry_msgs.msg import PoseStamped
 from geographic_msgs.msg import GeoPoseStamped
 import math
 from sensor_msgs.msg import BatteryState, NavSatFix
+from std_msgs.msg import Bool
 from mavros_msgs.msg import State, RCIn
 from mavros_msgs.srv import CommandBool, SetMode, CommandTOL
 import threading
@@ -17,6 +18,7 @@ class DroneState:
     LAND = 'LAND'
     CIRCLE = 'CIRCLE'
     RC_TAKEOVER = 'RC_TAKEOVER'
+    PRECISION_LANDING = 'PRECISION_LANDING'
 
 class Controller(Node):
     def __init__(self, drone_names, cell_count=6):
@@ -42,7 +44,6 @@ class Controller(Node):
             self.state[name] = {
                 'pose': None,
                 'battery': None,
-                'battery_pct': 1.0,
                 'state': None,
                 'rc': None,
                 'gps': None,
@@ -51,8 +52,7 @@ class Controller(Node):
                 'target_heading': None,
                 'ready_to_arm': False,
                 'landing_attempts': 0,
-                'landing_initiated': False,
-                'low_battery_warned': False
+                'landing_initiated': False
             }
 
             # Subscriptions
@@ -61,6 +61,8 @@ class Controller(Node):
             self.create_subscription(NavSatFix, f'{ns}/global_position/global', lambda msg, n=name: self.gps_callback(msg, n), qos)
             self.create_subscription(BatteryState, f'{ns}/battery', lambda msg, n=name: self.battery_callback(msg, n), qos)
             self.create_subscription(RCIn, f'{ns}/rc/in', lambda msg, n=name: self.rc_callback(msg, n), qos)
+            self.create_subscription(Bool, f'{ns}/precision_landing/takeover',
+                                     lambda msg, n=name: self.takeover_callback(msg, n), 10)
 
             # Publishers
             pose_pubs = []
@@ -128,37 +130,23 @@ class Controller(Node):
             self.get_logger().info(f"[{drone}] GPS data received")
         self.state[drone]['gps'] = msg
         
-    def _voltage_to_percentage(self, voltage):
-        """Estimate LiPo state of charge from pack voltage.
-
-        Uses self.cell_count (set at startup from user input) so the per-cell
-        voltage is always calculated correctly regardless of charge state.
-        Linear approximation: 3.5 V/cell = 0%, 4.2 V/cell = 100%.
-        """
-        if voltage <= 0:
-            return 1.0  # No data yet — assume full so we don't false-trigger warnings
-        cell_v = voltage / self.cell_count
-        pct = (cell_v - 3.5) / (4.2 - 3.5)
-        return max(0.0, min(1.0, pct))
-
     def battery_callback(self, msg, drone):
-        first_reading = self.state[drone].get('battery') is None
+        # Store raw message for voltage display. Battery monitoring handled by Mission Planner.
         self.state[drone]['battery'] = msg
-        if drone.lower().startswith('sim'):
-            # Simulation FCU reports accurate percentage directly
-            self.state[drone]['battery_pct'] = msg.percentage
-        else:
-            # Real drone FCU percentage is unreliable (commonly stuck at 99%);
-            # derive from voltage using known 6-cell configuration.
-            self.state[drone]['battery_pct'] = self._voltage_to_percentage(msg.voltage)
-        pct = self.state[drone]['battery_pct']
-        if first_reading:
-            self.get_logger().info(f"[{drone}] Battery: {pct*100:.1f}% ({msg.voltage:.2f}V)")
-        if pct < 0.20 and not self.state[drone].get('low_battery_warned'):
-            self.get_logger().warn(f"[{drone}] Low battery: {pct*100:.1f}% (voltage: {msg.voltage:.2f}V)")
-            self.state[drone]['low_battery_warned'] = True
     def rc_callback(self, msg, drone):
         self.state[drone]['rc'] = msg
+
+    def takeover_callback(self, msg, drone):
+        s = self.state[drone]
+        if msg.data:
+            if s['current_state'] not in (DroneState.ARM, DroneState.PRECISION_LANDING):
+                self.get_logger().warn(
+                    f'[{drone}] Precision landing takeover — was {s["current_state"]}')
+                s['current_state'] = DroneState.PRECISION_LANDING
+        else:
+            if s['current_state'] == DroneState.PRECISION_LANDING:
+                self.get_logger().info(f'[{drone}] Precision landing released — HOVER')
+                s['current_state'] = DroneState.HOVER
 
     # ------------------- MAVROS Commands -------------------
     def arm(self, drone):
@@ -376,12 +364,14 @@ class Controller(Node):
     def display_command_options(self):
         print("\nController ready. Available commands:")
         for name in self.drones:
-            pct = self.state[name].get('battery_pct')
-            voltage = self.state[name].get('battery')
-            if pct is not None and voltage is not None:
-                print(f"  [{name}] Battery: {pct*100:.1f}% ({voltage.voltage:.2f}V)")
+            battery = self.state[name].get('battery')
+            if battery is not None:
+                print(f"  [{name}] Battery: {battery.voltage:.2f}V (monitor in Mission Planner)")
             else:
                 print(f"  [{name}] Battery: waiting for data")
+            cur = self.state[name].get('current_state', DroneState.ARM)
+            if cur == DroneState.PRECISION_LANDING:
+                print(f"  [{name}] *** PRECISION LANDING — Pi has control, centering on tag ***")
         print("\nCommands:")
         print("  Waypoint:  <drone> <x> <y> <z>      (Example: sim1 1.0 2.0 3.0)")
         print("  Circle:    circle <drone1> [drone2 ...] <alt> <radius>")
@@ -416,7 +406,7 @@ class Controller(Node):
                     continue
 
                 # Check if we have received necessary status information
-                if not all([self.state[drone].get(key) for key in ['state', 'battery', 'pose']]):
+                if not all([self.state[drone].get(key) for key in ['state', 'pose']]):
                     self.get_logger().error(f"[{drone}] Cannot process command - waiting for drone to initialize")
                     self.display_command_options()
                     continue
@@ -446,22 +436,10 @@ class Controller(Node):
                         self.display_command_options()
                         continue
                     
-                    # Check battery for all drones
-                    low_battery_drones = []
-                    for d in formation_drones:
-                        battery = self.state[d].get('battery')
-                        pct = self.state[d].get('battery_pct', 1.0)
-                        if battery and pct < 0.20:
-                            low_battery_drones.append(f"{d} ({pct*100:.1f}%)")
-                    if low_battery_drones:
-                        self.get_logger().error(f"Battery too low for: {', '.join(low_battery_drones)}")
-                        self.display_command_options()
-                        continue
-                    
                     # Check initialization for all drones
                     uninitialized = []
                     for d in formation_drones:
-                        if not all([self.state[d].get(key) for key in ['state', 'battery', 'pose']]):
+                        if not all([self.state[d].get(key) for key in ['state', 'pose']]):
                             uninitialized.append(d)
                     if uninitialized:
                         self.get_logger().error(f"Drones not initialized: {', '.join(uninitialized)}")
@@ -556,14 +534,6 @@ class Controller(Node):
                         self.display_command_options()
                         continue
 
-                    # Check battery level before allowing arming
-                    battery = self.state[drone].get('battery')
-                    pct = self.state[drone].get('battery_pct', 1.0)
-                    if battery and pct < 0.20:  # 20% battery threshold
-                        self.get_logger().error(f"[{drone}] Cannot execute command - battery level too low ({pct*100:.1f}%)")
-                        self.display_command_options()
-                        continue
-                    
                     # Store the waypoint, clear any stale circle data, and resume autonomous control
                     self.state[drone]['manual_override'] = False
                     self.target_waypoints[drone] = (x, y, z)
@@ -613,9 +583,9 @@ class Controller(Node):
 
                 # Log missing initialization data periodically
                 now = time.time()
-                if not all([s.get(key) for key in ['state', 'battery', 'pose']]):
+                if not all([s.get(key) for key in ['state', 'pose']]):
                     if now - self.last_status_check.get(drone, 0.0) > 5.0:
-                        missing = [label for key, label in [('state', 'FCU state'), ('battery', 'battery status'), ('pose', 'position data')] if not s.get(key)]
+                        missing = [label for key, label in [('state', 'FCU state'), ('pose', 'position data')] if not s.get(key)]
                         self.get_logger().warn(f"[{drone}] Still waiting for: {', '.join(missing)}")
                         self.last_status_check[drone] = now
 
@@ -635,18 +605,6 @@ class Controller(Node):
 
                 # Arm + OFFBOARD after waypoint
                 if s['current_state'] == DroneState.ARM and s['ready_to_arm']:
-                    # Double-check battery level before arming
-                    battery = s.get('battery')
-                    pct = s.get('battery_pct', 1.0)
-                    if battery and pct < 0.20:  # 20% battery threshold
-                        self.get_logger().error(f"[{drone}] Aborting takeoff - battery too low ({pct*100:.1f}%)")
-                        self.get_logger().error(f"[{drone}] Battery must be above 20% for safe flight operations")
-                        s['ready_to_arm'] = False
-                        s['current_state'] = DroneState.ARM
-                        if drone in self.target_waypoints:
-                            del self.target_waypoints[drone]
-                        self.display_command_options()
-                        continue
 
                     waypoint = self.target_waypoints[drone]
                     # Handle both 3-tuple (x,y,z) and 4-tuple (x,y,z,is_gps) formats
@@ -862,6 +820,10 @@ class Controller(Node):
                     else:
                         self.get_logger().warn(f"[{drone}] Circle waypoints not available, transitioning to land")
                         s['current_state'] = DroneState.LAND
+
+                # Precision landing — Pi-local node owns setpoints; do nothing
+                elif s['current_state'] == DroneState.PRECISION_LANDING:
+                    pass
 
                 # Landing
                 elif s['current_state'] == DroneState.LAND:

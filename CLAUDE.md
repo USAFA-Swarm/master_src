@@ -5,12 +5,12 @@
 | Item | Detail |
 |---|---|
 | Project | USAFA Robot Teaming Capstone — autonomous multi-drone control |
-| ROS2 distro | Humble (Ubuntu 22.04) |
+| ROS2 distro | Pi: Jazzy (Ubuntu 24.04) / Ground: Humble (Ubuntu 22.04) |
 | Flight controller | ArduPilot (ArduCopter), GUIDED mode |
-| FC bridge | MAVROS (`ros-humble-mavros`) |
-| Onboard computer | Raspberry Pi 4, Ubuntu 22.04.5 LTS |
+| FC bridge | MAVROS (`ros-jazzy-mavros` on Pi) |
+| Onboard computer | Raspberry Pi 4, Ubuntu 24.04 LTS (user: `hare`) |
 | Ground computer | Ubuntu 22.04 laptop (`/home/dfec/master_src`) |
-| Camera | CSI ribbon camera on Pi (model TBD — hardware issue pending) |
+| Camera | IMX296 global shutter CSI camera — **WORKING** |
 | Link | Microhard radio → switch → ground laptops (192.168.168.x subnet) |
 | Repo | https://github.com/USAFA-Swarm/master_src |
 
@@ -63,12 +63,19 @@ Update `TASKS.md` and `ARCHITECTURE.md` to reflect what changed.
 
 ## Current Blockers
 
-- **CSI ribbon cable hardware issue** — camera sensor not detected by Pi kernel
-  (`sudo dmesg | grep unicam` returns nothing). Cable or connector fault.
-  Camera subsystem (`camera_ros`, `apriltag_ros`) is on hold until resolved.
-- **Next task once resolved:** verify `libcamera-hello --list-cameras` shows
-  the sensor, then re-run `ros2 launch onboard onboard.launch.py` and confirm
-  `/camera/image_raw` publishes. See TASKS.md Tier 1.
+- **Humble/Jazzy DDS incompatibility** — ground laptop (Humble) subscribing to
+  Pi (Jazzy) topics causes DDS deserialization errors that crash `camera_ros`.
+  **Workaround:** keep `ROS_LOCALHOST_ONLY=1` on Pi always for camera ops.
+  View feed via SSH -X (`scripts/view_camera.sh`) — do NOT subscribe from ground.
+  Note: `ROS_LOCALHOST_ONLY` is deprecated in Jazzy but still honored.
+- **Camera mounted upside-down** — libcamera reports Rotate180 on IMX296.
+  Raw image feed is inverted. Remount camera physically, or add a flip node
+  before AprilTag detection. Does not affect calibration validity.
+- **Circle command hard landing** — drone takes off, begins moving toward first
+  circle waypoint, then lands unexpectedly. Waypoint commands work fine.
+  See TASKS.md Tier 1.5 for diagnosis procedure.
+- **Next session start:** SSH to Pi (IP may need checking — set static if not done),
+  run `tmux attach -t camera` or start fresh. See Pi SSH Workflow below.
 
 ---
 
@@ -77,10 +84,40 @@ Update `TASKS.md` and `ARCHITECTURE.md` to reflect what changed.
 **Network:** Microhard radio → switch. Pi IP: `192.168.168.102`.
 Ground Ubuntu: `192.168.168.103`. Ground Windows: `192.168.168.233`.
 
-**NEW — single launch (replaces the three manual steps below):**
+**SSH (passwordless — run `ssh-keygen` then `ssh-copy-id hare@192.168.168.102` once):**
 ```bash
-ssh pi@192.168.168.102
-cd ~/master_src && source install/setup.bash
+ssh hare@192.168.168.102
+```
+
+**Pi env vars (already added to `~/.bashrc` — auto-set in every new terminal):**
+```bash
+export ROS_DOMAIN_ID=13
+export ROS_LOCALHOST_ONLY=1
+source /opt/ros/jazzy/setup.bash
+source ~/master_src/install/setup.bash
+```
+
+**Persistent sessions — use tmux so SSH disconnects don't kill nodes:**
+```bash
+tmux new -s camera        # new session
+tmux attach -t camera     # reattach after disconnect
+# Ctrl-B c  = new window | Ctrl-B 0/1/2 = switch window
+```
+
+**Camera only (live feed / testing):**
+```bash
+ros2 run camera_ros camera_node --ros-args -p camera:=0 -p format:=RGB888 -p width:=1280 -p height:=720
+# or via launch file (after colcon build on Pi):
+ros2 launch onboard camera_only.launch.py
+```
+
+**View feed on Pi monitor (open in second tmux window or Pi terminal):**
+```bash
+ros2 run image_tools showimage --ros-args -r image:=/camera/image_raw -p reliability:=best_effort
+```
+
+**Full onboard launch:**
+```bash
 ros2 launch onboard onboard.launch.py
 ```
 
@@ -98,9 +135,16 @@ ros2 run mavros mavros_node --ros-args \
 
 **Ground laptop — controller:**
 ```bash
-cd /home/dfec/master_src/capstone/capstone
-python3 controller.py
+cd /home/dfec/master_src
+source install/setup.bash
+python3 capstone/capstone/controller.py
 # Enter drone names: drone1
+```
+
+**Ground laptop — view camera feed (SSH -X to Pi):**
+```bash
+./scripts/view_camera.sh
+# Opens showimage window forwarded from Pi — do NOT subscribe to /camera topics directly
 ```
 
 **QGroundControl (Windows):** UDP, port 14550.
