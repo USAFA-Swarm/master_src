@@ -33,7 +33,7 @@ def generate_launch_description():
     mav = cfg['mavros']
     cam = cfg['camera']
     tag = cfg['apriltag']
-    tf  = cfg['camera_tf']
+    ctf = cfg['camera_tf']
     pl  = cfg['precision_landing']
 
     return LaunchDescription([
@@ -68,7 +68,7 @@ def generate_launch_description():
                 'width':     cam['width'],
                 'height':    cam['height'],
                 'framerate': cam['framerate'],
-                'frame_id':  tf['child_frame'],
+                'frame_id':  ctf['child_frame'],
             }],
         ),
 
@@ -102,8 +102,10 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'family':      tag['tag_family'],
-                'size':        tag['tag_size'],
+                'size':        tag['tag_size'],        # default for unlisted tags
                 'max_hamming': tag['max_hamming'],
+                'tag.ids':     tag['tag_ids'],         # per-tag size overrides
+                'tag.sizes':   tag['tag_sizes'],
             }],
             remappings=[
                 # apriltag_ros subscribes by default to image_rect + camera_info
@@ -125,19 +127,38 @@ def generate_launch_description():
             executable='static_transform_publisher',
             name='camera_tf_static',
             arguments=[
-                '--x',              str(tf['x']),
-                '--y',              str(tf['y']),
-                '--z',              str(tf['z']),
-                '--roll',           str(tf['roll']),
-                '--pitch',          str(tf['pitch']),
-                '--yaw',            str(tf['yaw']),
-                '--frame-id',       tf['parent_frame'],
-                '--child-frame-id', tf['child_frame'],
+                '--x',              str(ctf['x']),
+                '--y',              str(ctf['y']),
+                '--z',              str(ctf['z']),
+                '--roll',           str(ctf['roll']),
+                '--pitch',          str(ctf['pitch']),
+                '--yaw',            str(ctf['yaw']),
+                '--frame-id',       ctf['parent_frame'],
+                '--child-frame-id', ctf['child_frame'],
             ],
         ),
 
         # ------------------------------------------------------------------
-        # 6. Precision landing — monitors /apriltag/detections at all times;
+        # 6. Identity TF: camera → camera_rotated
+        #    image_rotate appends "_rotated" to the frame_id in image headers.
+        #    apriltag_ros may use that modified frame_id as the TF parent.
+        #    This zero-offset TF ensures the chain base_link→camera→camera_rotated
+        #    is always complete regardless of which frame apriltag uses.
+        # ------------------------------------------------------------------
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='camera_rotated_tf',
+            arguments=[
+                '--x', '0', '--y', '0', '--z', '0',
+                '--roll', '0', '--pitch', '0', '--yaw', '0',
+                '--frame-id',       'camera',
+                '--child-frame-id', 'camera_rotated',
+            ],
+        ),
+
+        # ------------------------------------------------------------------
+        # 7. Precision landing — monitors /apriltag/detections at all times;
         #    takes setpoint control when target tag is confirmed visible,
         #    centers laterally, descends, hands off to ArduCopter LAND
         # ------------------------------------------------------------------
@@ -149,6 +170,8 @@ def generate_launch_description():
             parameters=[{
                 'drone_name':       pl['drone_name'],
                 'landing_tag_id':   pl['landing_tag_id'],
+                'high_alt_tag_id':  pl['high_alt_tag_id'],
+                'tag_switch_alt':   pl['tag_switch_alt'],
                 'confirm_frames':   pl['confirm_frames'],
                 'tag_loss_timeout': pl['tag_loss_timeout'],
                 'descent_step':     pl['descent_step'],

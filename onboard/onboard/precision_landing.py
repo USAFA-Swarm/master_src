@@ -45,6 +45,8 @@ class PrecisionLanding(Node):
         # Parameters
         self.declare_parameter('drone_name',       'drone1')
         self.declare_parameter('landing_tag_id',   0)
+        self.declare_parameter('high_alt_tag_id',  4)
+        self.declare_parameter('tag_switch_alt',   0.8)
         self.declare_parameter('confirm_frames',   5)
         self.declare_parameter('tag_loss_timeout', 3.0)
         self.declare_parameter('descent_step',     0.05)
@@ -52,19 +54,22 @@ class PrecisionLanding(Node):
         self.declare_parameter('lateral_gain',     0.6)
         self.declare_parameter('loop_rate',        10.0)
 
-        drone            = self.get_parameter('drone_name').value
-        self._drone      = drone
-        self._tag_id     = self.get_parameter('landing_tag_id').value
-        self._confirm_n  = self.get_parameter('confirm_frames').value
-        self._loss_to    = self.get_parameter('tag_loss_timeout').value
-        self._d_step     = self.get_parameter('descent_step').value
-        self._final_alt  = self.get_parameter('land_final_alt').value
-        self._gain       = self.get_parameter('lateral_gain').value
-        loop_hz          = self.get_parameter('loop_rate').value
+        drone               = self.get_parameter('drone_name').value
+        self._drone         = drone
+        self._tag_id        = self.get_parameter('landing_tag_id').value
+        self._high_tag_id   = self.get_parameter('high_alt_tag_id').value
+        self._switch_alt    = self.get_parameter('tag_switch_alt').value
+        self._confirm_n     = self.get_parameter('confirm_frames').value
+        self._loss_to       = self.get_parameter('tag_loss_timeout').value
+        self._d_step        = self.get_parameter('descent_step').value
+        self._final_alt     = self.get_parameter('land_final_alt').value
+        self._gain          = self.get_parameter('lateral_gain').value
+        loop_hz             = self.get_parameter('loop_rate').value
 
         # Internal state
         self._pl_state        = _State.IDLE
         self._confirm_count   = 0
+        self._last_confirm_tag = None  # which tag ID the confirm counter is for
         self._current_pose    = None   # latest PoseStamped from MAVROS
         self._hold_pose       = None   # PoseStamped to hold when tag lost
         self._last_tag_sec    = 0.0    # clock time of last confirmed tag detection
@@ -109,6 +114,22 @@ class PrecisionLanding(Node):
             f'PrecisionLanding ready — drone={drone}, tag_id={self._tag_id}')
 
     # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _active_tag_id(self) -> int:
+        """Return which tag ID to track based on current altitude.
+
+        Above tag_switch_alt: use high_alt_tag_id (large outer ring, ID 4).
+        Below tag_switch_alt: use landing_tag_id (small center tag, ID 0).
+        If altitude unknown, default to outer tag.
+        """
+        if self._current_pose is None:
+            return self._high_tag_id
+        z = self._current_pose.pose.position.z
+        return self._tag_id if z < self._switch_alt else self._high_tag_id
+
+    # ------------------------------------------------------------------
     # Callbacks
     # ------------------------------------------------------------------
 
@@ -121,11 +142,19 @@ class PrecisionLanding(Node):
             self._release_control()
 
     def _detections_cb(self, msg):
-        found = any(d.id == self._tag_id for d in msg.detections)
+        active = self._active_tag_id()
+        found  = any(d.id == active for d in msg.detections)
 
         if self._pl_state == _State.IDLE:
+            # Reset counter if altitude changed and we're now watching a different tag
+            if self._last_confirm_tag != active:
+                self._confirm_count    = 0
+                self._last_confirm_tag = active
+
             if found:
                 self._confirm_count += 1
+                self.get_logger().debug(
+                    f'[PL] Tag {active} seen {self._confirm_count}/{self._confirm_n}')
                 if self._confirm_count >= self._confirm_n:
                     self._take_control()
             else:
@@ -144,8 +173,9 @@ class PrecisionLanding(Node):
             self.get_logger().warn('[PL] No pose yet — deferring takeover')
             self._confirm_count = 0
             return
+        active = self._active_tag_id()
         self.get_logger().warn(
-            f'[PL] Tag {self._tag_id} confirmed — taking control from controller')
+            f'[PL] Tag {active} confirmed — taking control from controller')
         self._pl_state      = _State.CENTERING
         self._hold_pose     = self._current_pose
         self._last_tag_sec  = self._now_sec()
@@ -185,8 +215,9 @@ class PrecisionLanding(Node):
             self._pl_state = _State.HANDOFF
             return
 
-        # Try TF lookup: map → tag (gives tag ENU world position)
-        tag_frame = f'tag{self._tag_id}'
+        # Select tag based on current altitude, log when switching
+        active    = self._active_tag_id()
+        tag_frame = f'tag{active}'
         try:
             tf = self._tf_buffer.lookup_transform(
                 'map', tag_frame,
