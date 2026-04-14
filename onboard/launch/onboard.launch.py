@@ -169,6 +169,7 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'drone_name':       pl['drone_name'],
+                'tag_family':       tag['tag_family'],
                 'landing_tag_id':   pl['landing_tag_id'],
                 'high_alt_tag_id':  pl['high_alt_tag_id'],
                 'tag_switch_alt':   pl['tag_switch_alt'],

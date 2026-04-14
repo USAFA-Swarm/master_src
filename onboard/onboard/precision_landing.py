@@ -44,6 +44,7 @@ class PrecisionLanding(Node):
 
         # Parameters
         self.declare_parameter('drone_name',       'drone1')
+        self.declare_parameter('tag_family',       '36h11')
         self.declare_parameter('landing_tag_id',   0)
         self.declare_parameter('high_alt_tag_id',  4)
         self.declare_parameter('tag_switch_alt',   0.8)
@@ -56,6 +57,7 @@ class PrecisionLanding(Node):
 
         drone               = self.get_parameter('drone_name').value
         self._drone         = drone
+        self._tag_family    = self.get_parameter('tag_family').value
         self._tag_id        = self.get_parameter('landing_tag_id').value
         self._high_tag_id   = self.get_parameter('high_alt_tag_id').value
         self._switch_alt    = self.get_parameter('tag_switch_alt').value
@@ -217,7 +219,7 @@ class PrecisionLanding(Node):
 
         # Select tag based on current altitude, log when switching
         active    = self._active_tag_id()
-        tag_frame = f'tag{active}'
+        tag_frame = f'tag{self._tag_family}:{active}'
         try:
             tf = self._tf_buffer.lookup_transform(
                 'map', tag_frame,
