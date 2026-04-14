@@ -81,12 +81,12 @@ Update `TASKS.md` and `ARCHITECTURE.md` to reflect what changed.
 
 ## Pi SSH Workflow
 
-**Network:** Microhard radio → switch. Pi IP: `192.168.168.102`.
+**Network:** Microhard radio → switch. Pi IP: `192.168.168.105`.
 Ground Ubuntu: `192.168.168.103`. Ground Windows: `192.168.168.233`.
 
-**SSH (passwordless — run `ssh-keygen` then `ssh-copy-id hare@192.168.168.102` once):**
+**SSH (passwordless — run `ssh-keygen` then `ssh-copy-id hare@192.168.168.249` once):**
 ```bash
-ssh hare@192.168.168.102
+ssh hare@192.168.168.249
 ```
 
 **Pi env vars (already added to `~/.bashrc` — auto-set in every new terminal):**

@@ -35,6 +35,11 @@ Ordered by dependency. Complete earlier tiers before later ones.
 - **Static TF publisher** `base_link → camera_optical_frame` in launch file.
   Values are placeholders — must be measured from physical mount.
 
+- **Tag sizes confirmed and configured** in `onboard/config/onboard.yaml`:
+  ID 0=0.121m (intermediate), IDs 1-3=0.061m each, ID 4=0.614m (outermost).
+  TF frame name fixed: apriltag_ros publishes `tag36h11:{id}`, not `tag{id}`.
+  `tag_family` param now passed through launch file to precision_landing node.
+
 - **Precision landing node** (`onboard/onboard/precision_landing.py`)
   Monitors `/apriltag/detections` at all times. On target tag confirmation, publishes
   `/<d>/precision_landing/takeover=True`; controller yields. Node centers laterally
@@ -63,7 +68,44 @@ Ordered by dependency. Complete earlier tiers before later ones.
 
 ---
 
-## TIER 1 — Current Blockers (Hardware)
+## TIER 1 — Current Blockers
+
+### [IN PROGRESS] Precision landing setpoints not updating
+
+Takeover (`/drone1/precision_landing/takeover = True`) confirmed working.
+TF chain confirmed complete via `ros2 run tf2_ros tf2_echo map tag36h11:4`.
+Despite both working, `/drone1/setpoint_position/local` stays constant at hold_pose
+(initial fake pose coords) instead of tracking tag position.
+
+**Next debugging steps (start here next session):**
+1. `ros2 topic hz /drone1/setpoint_position/local` — confirm if node is publishing at all
+2. Check `[precision_landing]` output in launch terminal for unhandled exceptions
+3. If publishing at 10Hz but constant: TF lookup succeeds but correction logic is wrong
+4. If not publishing at 10Hz: exception is crashing the timer callback silently
+
+**Test setup for above (no drone needed):**
+```bash
+# Window 1: ros2 launch onboard onboard.launch.py
+# Window 2: fake pose
+ros2 topic pub /drone1/local_position/pose geometry_msgs/msg/PoseStamped \
+  "{header: {frame_id: 'map'}, pose: {position: {x: 0.0, y: 0.0, z: 3.0}, orientation: {w: 1.0}}}" \
+  --qos-reliability best_effort --rate 10
+# Window 3: fake TF
+ros2 run tf2_ros static_transform_publisher \
+  --x 0 --y 0 --z 3.0 --roll 0 --pitch 0 --yaw 0 --frame-id map --child-frame-id base_link
+# Window 4: watch setpoints
+ros2 topic echo /drone1/setpoint_position/local
+```
+Hold tag 4 under camera. Takeover fires after 5 frames, then setpoints should update.
+
+**Note on pose estimation:** tag positions in map frame are showing implausibly large z values
+(e.g. z=-12.959m when tag is <2m away). Tag sizes in onboard.yaml may still be wrong,
+or camera_info cx/cy is not adjusted for the 180° rotated image. Does not block
+the lateral correction test but will cause wrong descent behaviour on real drone.
+
+---
+
+## TIER 1 — Hardware Blockers
 
 ### [DONE] CSI camera detected on Pi
 
