@@ -61,8 +61,8 @@ apriltag:
   # Measure outer black border of each tag to black border on the opposite side (metres)
   # ID 0 = innermost center tag (24 mm), ID 4 = outermost ring (614 mm)
   # TODO: measure and add the 121 mm intermediate tag once its ID is confirmed
-  tag_ids:   [0,     4    ]
-  tag_sizes: [0.024, 0.614]
+  tag_ids:   [0,     1,     2,     3,     4    ]
+  tag_sizes: [0.121, 0.061, 0.061, 0.061, 0.614]
 
 # ---------------------------------------------------------------------------
 # Static TF: body frame → camera optical frame
