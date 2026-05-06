@@ -25,6 +25,8 @@ setup(
     entry_points={
         'console_scripts': [
             'precision_landing = onboard.precision_landing:main',
+            'tag_offset_display = onboard.tag_offset_display:main',
+            'apriltag_logger = onboard.apriltag_logger:main',
         ],
     },
 )

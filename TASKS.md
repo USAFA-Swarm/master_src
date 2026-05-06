@@ -46,6 +46,12 @@ Ordered by dependency. Complete earlier tiers before later ones.
   using `map → tag<id>` TF2 lookup, descends, hands off to ArduCopter LAND below
   `land_final_alt`. Config in `onboard.yaml precision_landing:` section.
 
+- **Tag offset display node** (`onboard/onboard/tag_offset_display.py`)
+  Subscribes to `/apriltag/detections`. Reads camera-frame pose (x/y/z) directly
+  from each detection — computed by apriltag_ros from tag size + pixel corners.
+  Logs range, lateral error, and x/y at 2 Hz. Warns if no detections for 2 s.
+  Added to `onboard.launch.py` and `onboard.yaml tag_offset_display:` section.
+
 - **Image rotate** (`image_rotate` node in onboard.launch.py)
   Corrects upside-down IMX296 mount. Publishes `/camera/image_rotated`.
   AprilTag now receives corrected image; poses are intuitive.

@@ -52,17 +52,19 @@ apriltag:
   tag_family: "36h11"
 
   # Default tag size (used for any tag ID not listed in tag_ids below)
-  tag_size: 0.166
+  tag_size: 0.1
 
   # Maximum hamming distance for detection (0 = exact match only, recommended)
-  max_hamming: 0
+  max_hamming: 1
 
   # Per-tag sizes — critical for correct pose estimation at each altitude stage
   # Measure outer black border of each tag to black border on the opposite side (metres)
-  # ID 0 = innermost center tag (24 mm), ID 4 = outermost ring (614 mm)
-  # TODO: measure and add the 121 mm intermediate tag once its ID is confirmed
-  tag_ids:   [0,     1,     2,     3,     4    ]
-  tag_sizes: [0.121, 0.061, 0.061, 0.061, 0.614]
+  # Confirmed 2026-04-22:
+  #   ID 0   = 121 mm — center tag, primary landing target
+  #   IDs 1-4 = 61 mm each — corner tags
+  #   ID 107 = 614 mm — large outer boundary tag, visible from altitude
+  tag_ids:   [0,     1,     2,     3,     4,     107  ]
+  tag_sizes: [0.121, 0.061, 0.061, 0.061, 0.061, 0.614]
 
 # ---------------------------------------------------------------------------
 # Static TF: body frame → camera optical frame
@@ -97,12 +99,11 @@ precision_landing:
   drone_name: "drone1"      # must match mavros.drone_name
 
   # Two-stage tag tracking: outer tag at altitude, center tag close to ground
-  # Stage 1 — high altitude: use large outer tag (ID 4, 614 mm) for initial lock
-  high_alt_tag_id: 4
-  # Stage 2 — close range: switch to center tag (ID 0, 24 mm) for final precision
+  # Stage 1 — high altitude: use large outer tag (ID 107, 614 mm) for initial lock
+  high_alt_tag_id: 107
+  # Stage 2 — close range: switch to center tag (ID 0, 121 mm) for final precision
   landing_tag_id: 0
   # Altitude (metres AGL) at which to switch from outer tag to center tag
-  # 24 mm tag is ~37 px wide at 1 m with this camera — switch at 0.8 m to be safe
   tag_switch_alt: 0.8
 
   confirm_frames: 5         # consecutive frames with active tag before taking control
@@ -111,3 +112,19 @@ precision_landing:
   land_final_alt: 0.4       # metres AGL — hand off to ArduCopter LAND below this
   lateral_gain: 0.6         # fraction of lateral error corrected per cycle (0.0–1.0)
   loop_rate: 10.0           # Hz — control loop rate
+
+# ---------------------------------------------------------------------------
+# Tag offset display — diagnostic only, no flight control
+# ---------------------------------------------------------------------------
+tag_offset_display:
+  tag_family:   "36h11"  # must match apriltag.tag_family
+  display_rate: 2.0      # Hz — how often to print to terminal
+  warn_timeout: 2.0      # seconds without detection before warning
+  # Mirror of precision_landing params — used for simulation display only
+  landing_tag_id:  0
+  high_alt_tag_id: 107
+  tag_switch_alt:  0.8
+  confirm_frames:  5
+  lateral_gain:    0.6
+  descent_step:    0.05
+  land_final_alt:  0.4

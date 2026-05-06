@@ -787,9 +787,10 @@ class Controller(Node):
                                 if dist < 1.5:  # Reached waypoint
                                     self.circle_waypoints[drone].pop(0)
                                     if not self.circle_waypoints[drone]:
-                                        self.get_logger().info(f"[{drone}] Circle complete")
-                                        s['current_state'] = DroneState.LAND
+                                        self.get_logger().info(f"[{drone}] Circle complete — hovering at center")
+                                        s['current_state'] = DroneState.HOVER
                                         del self.circle_waypoints[drone]
+                                        self.display_command_options()
                                 else:
                                     # For clockwise circle, negate heading and add 90° to face tangent
                                     heading = -math.degrees(math.atan2(math.sin(dlon) * math.cos(math.radians(lat)),
@@ -810,16 +811,18 @@ class Controller(Node):
                                 if dist < 1.0:
                                     self.circle_waypoints[drone].pop(0)
                                     if not self.circle_waypoints[drone]:
-                                        self.get_logger().info(f"[{drone}] Circle complete")
-                                        s['current_state'] = DroneState.LAND
+                                        self.get_logger().info(f"[{drone}] Circle complete — hovering at center")
+                                        s['current_state'] = DroneState.HOVER
                                         del self.circle_waypoints[drone]
+                                        self.display_command_options()
                                 else:
                                     # For clockwise circle, negate heading and add 90° to face tangent
                                     target_heading = -math.degrees(math.atan2(y - current_y, x - current_x)) + 90.0
                                     self.send_position(drone, x, y, z, yaw_deg=target_heading)
                     else:
-                        self.get_logger().warn(f"[{drone}] Circle waypoints not available, transitioning to land")
-                        s['current_state'] = DroneState.LAND
+                        self.get_logger().warn(f"[{drone}] Circle waypoints not available, hovering")
+                        s['current_state'] = DroneState.HOVER
+                        self.display_command_options()
 
                 # Precision landing — Pi-local node owns setpoints; do nothing
                 elif s['current_state'] == DroneState.PRECISION_LANDING:
