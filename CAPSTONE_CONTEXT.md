@@ -388,3 +388,144 @@ source ~/master_src/install/setup.bash
 - `drone_interface/` — empty stub
 - `move2hover/` — cmd_vel architecture, incompatible with MAVROS
 - `comms_interface/` — passive logging stubs, never used operationally
+
+---
+
+## 8. SOFTWARE ARCHITECTURE DIAGRAM
+
+> Renders as a live diagram on GitHub. Copy into any Mermaid-compatible viewer if needed.
+
+```mermaid
+graph TB
+
+    subgraph PI["Raspberry Pi 4  ·  Ubuntu 24.04  ·  ROS2 Jazzy  ·  192.168.168.105"]
+        direction TB
+
+        FC(["ArduPilot FCU\nArduCopter — GUIDED mode\n/dev/ttyACM0 @ 921600 baud"])
+        IMX(["IMX296 Global Shutter\nCSI Camera  1280×720"])
+
+        subgraph ONBOARD["onboard/  package  —  started by  onboard/launch/onboard.launch.py"]
+            direction TB
+            MV["mavros_node\n─────────────────\npub: /drone1/local_position/pose\npub: /drone1/state\npub: /drone1/battery\nsub: /drone1/setpoint_position/local"]
+            CN["camera_node\ncamera_ros pkg\n─────────────\npub: /camera/image_raw\npub: /camera/camera_info"]
+            IR["image_rotate\n──────────────────\nsub: /camera/image_raw\npub: /camera/image_rotated"]
+            AN["apriltag_node\napriltag_ros pkg\n────────────────────\nsub: /camera/image_rotated\nsub: /camera/camera_info\npub: /apriltag/detections\nTF:  camera → tag36h11:{id}"]
+            PL["onboard/precision_landing.py\n──────────────────────────────\nsub: /apriltag/detections\nsub: /drone1/local_position/pose\npub: /drone1/setpoint_position/local\npub: /drone1/precision_landing/takeover"]
+            TOD["onboard/tag_offset_display.py\n─────────────────────────────\nsub: /apriltag/detections\nTF lookup: camera → tag36h11:{id}\noutput: terminal  2 Hz"]
+        end
+
+        AL["onboard/apriltag_logger.py\n─────────────────────────────\nsub: /apriltag/detections\nTF lookup: camera → tag36h11:{id}\noutput: ~/apriltag_logs/CSV"]
+
+        YAML[("onboard/config/onboard.yaml\n────────────────────────────\nAll params: mavros · camera\napriltag · camera_tf\nprecision_landing · display")]
+
+        ALCSV[("~/apriltag_logs/\napriltag_YYYYMMDD_HHMMSS.csv\ntimestamp · tag_id · x · y · z · lateral")]
+
+        TF[["TF2 Tree\n──────────────────────\nmap → base_link  ← MAVROS\nbase_link → camera  ← static\ncamera → camera_rotated  ← static\ncamera_rotated → tag36h11:{id}  ← apriltag_node"]]
+
+        FC      -->|"serial"| MV
+        IMX     --> CN
+        CN      -->|"/camera/image_raw"| IR
+        IR      -->|"/camera/image_rotated"| AN
+        MV      -->|"TF: map → base_link"| TF
+        AN      -->|"TF: camera → tag36h11:{id}"| TF
+        TF      --> PL
+        AN      -->|"/apriltag/detections"| PL
+        AN      -->|"/apriltag/detections"| TOD
+        AN      -->|"/apriltag/detections"| AL
+        AL      --> ALCSV
+        YAML    -. "params at launch" .-> MV & CN & AN & PL & TOD
+    end
+
+    subgraph GROUND["Ground Laptop  ·  Ubuntu 22.04  ·  ROS2 Humble  ·  192.168.168.103"]
+        direction TB
+
+        subgraph CAP["capstone/  package"]
+            CTRL["capstone/controller.py\n──────────────────────────────\nARM → WAYPOINT → HOVER → CIRCLE → HOVER\nPRECISION_LANDING  ·  RC_TAKEOVER\n50 Hz state machine thread\nsub: /drone1/local_position/pose\nsub: /drone1/state  ·  /drone1/battery\nsub: /drone1/precision_landing/takeover\npub: /drone1/setpoint_position/local"]
+            FL["capstone/flight_logger.py\n──────────────────────────\nsub: /drone1/local_position/pose\nBEST_EFFORT QoS\noutput: ~/flight_logs/CSV"]
+            SITLL["capstone/launch/sitl.launch.py\n────────────────────────────────\nLaunches mavros_node only\nfcu_url: udp://@127.0.0.1:14551\nFor ArduPilot SITL testing"]
+        end
+
+        FLCSV[("~/flight_logs/\nflight_YYYYMMDD_HHMMSS.csv\ntimestamp · x_m · y_m · z_m")]
+
+        subgraph SCR["scripts/  (no ROS2 — run offline)"]
+            PFL["scripts/plot_flight_log.py\n──────────────────────────\ninput: flight CSV\noutput: flight_x · flight_y\nflight_z · flight_3d  PNGs\nauto-detects TAKEOFF/SEARCH\nTRANSIT/LAND phases"]
+            PAL["scripts/plot_apriltag_log.py\n────────────────────────────\ninput: apriltag CSV\noutput: x(t) · y(t) · z(t)\ntop-down scatter · combined\n5 PNGs per run"]
+            VCS["scripts/view_camera.sh\n───────────────────────\nSSH -X to Pi\nruns showimage on Pi\nforwards window to laptop\n(avoids DDS incompatibility)"]
+        end
+
+        GRAPHS[("graphs/\nflight_*.png\napriltag_*.png")]
+        FL      --> FLCSV
+        FLCSV   --> PFL
+        PFL     --> GRAPHS
+        PAL     --> GRAPHS
+    end
+
+    subgraph WIN["Windows  ·  192.168.168.233"]
+        QGC["QGroundControl\nUDP :14550\n(live map + telemetry)"]
+    end
+
+    subgraph DATA["data/  (repo — test logs)"]
+        CSV1["apriltag_20260410_152423.csv\n124 rows · tags 0,2,3"]
+        CSV2["apriltag_20260410_153815.csv\n107 rows · tags 0,1,4"]
+        CSV3["apriltag_20260410_154049.csv\n248 rows · vertical lift test\ntags 0,1,2,3,4,107"]
+    end
+
+    MV      <-->|"Microhard radio  ·  192.168.168.x subnet\nROS2 topics over DDS (ROS_DOMAIN_ID=13)"| CTRL
+    MV      -->|"/drone1/local_position/pose\nBEST_EFFORT QoS"| FL
+    PL      -->|"/drone1/precision_landing/takeover  Bool"| CTRL
+    CTRL    -->|"/drone1/setpoint_position/local\nPoseStamped"| MV
+    MV      -. "MAVProxy\nUDP :14550" .-> QGC
+    ALCSV   -->|"scp hare@192.168.168.105:\n~/apriltag_logs/*.csv  ."| PAL
+```
+
+---
+
+### File & Folder Reference
+
+```
+master_src/                              ← ROS2 workspace root (git repo)
+│
+├── capstone/                            ← Ground laptop package
+│   ├── capstone/
+│   │   ├── controller.py               ← Primary flight controller (stdin commands)
+│   │   └── flight_logger.py            ← Logs /local_position/pose → CSV
+│   ├── launch/
+│   │   └── sitl.launch.py              ← MAVROS-only launch for SITL
+│   ├── CONTROLLER_DOCUMENTATION.md     ← Full command + architecture reference
+│   └── setup.py
+│
+├── onboard/                             ← Pi 4 package
+│   ├── onboard/
+│   │   ├── precision_landing.py        ← Tag-guided descent state machine
+│   │   ├── tag_offset_display.py       ← Live terminal diagnostic (2 Hz)
+│   │   └── apriltag_logger.py          ← Logs tag offsets → CSV
+│   ├── launch/
+│   │   ├── onboard.launch.py           ← Full Pi stack (mavros+camera+apriltag+PL)
+│   │   └── camera_only.launch.py       ← Camera checkout (no MAVROS, no apriltag)
+│   ├── config/
+│   │   └── onboard.yaml               ← Single config source — all Pi params
+│   └── setup.py
+│
+├── apriltag/
+│   └── config/
+│       └── default_cam.yaml            ← Real calibration (2026-04-08)
+│                                          fx=1551.16  fy=1547.37
+│                                          cx=663.41   cy=341.48
+│
+├── scripts/                             ← Standalone tools (no ROS2)
+│   ├── plot_flight_log.py              ← flight CSV → 4 PNGs (X/Y/Z/3D)
+│   ├── plot_apriltag_log.py            ← apriltag CSV → 5 PNGs
+│   └── view_camera.sh                  ← SSH -X camera feed viewer
+│
+├── data/                                ← Test session logs
+│   ├── apriltag_20260410_152423.csv    ← Session 1 (124 rows, tags 0,2,3)
+│   ├── apriltag_20260410_153815.csv    ← Session 2 (107 rows, tags 0,1,4)
+│   └── apriltag_20260410_154049.csv    ← Session 3 (248 rows, vertical lift test)
+│
+├── graphs/                              ← Generated plot output (gitignored)
+├── memory/                              ← Session research and plan notes
+├── ARCHITECTURE.md                      ← Node graph, topics, TF frames, state machine
+├── TASKS.md                             ← Work queue: DONE / IN PROGRESS / TODO
+├── CLAUDE.md                            ← Project context + workflow rules
+└── CAPSTONE_CONTEXT.md                  ← This file — full technical extract
+```
